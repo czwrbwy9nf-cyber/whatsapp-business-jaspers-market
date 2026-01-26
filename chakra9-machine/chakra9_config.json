@@ -1,0 +1,457 @@
+{
+  "chakra9_machine": {
+    "version": "1.0.0",
+    "name": "Chakra9 Content Machine",
+    "description": "Automated yacht content generation system for n8n Cloud",
+    "target_instance": "zenivatravel.app.n8n.cloud",
+
+    "architecture": {
+      "ai_models": {
+        "creative_director": {
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-5",
+          "role": "Style, emotion, storytelling, luxury tone",
+          "api_endpoint": "https://api.anthropic.com/v1/messages",
+          "required_headers": {
+            "x-api-key": "{{ANTHROPIC_API_KEY}}",
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+          }
+        },
+        "performance_marketer": {
+          "provider": "openai",
+          "model": "gpt-4o",
+          "role": "Hooks, CTAs, conversions, structured JSON output",
+          "api_endpoint": "https://api.openai.com/v1/chat/completions",
+          "required_headers": {
+            "Authorization": "Bearer {{OPENAI_API_KEY}}",
+            "Content-Type": "application/json"
+          }
+        },
+        "qa_reviewer": {
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-5",
+          "role": "Fact-checking, brand compliance, guardrails"
+        },
+        "transcription": {
+          "provider": "openai",
+          "model": "whisper-1",
+          "api_endpoint": "https://api.openai.com/v1/audio/transcriptions"
+        }
+      }
+    },
+
+    "database_schema": {
+      "provider": "airtable",
+      "tables": {
+        "YACHTS": {
+          "fields": {
+            "yacht_id": { "type": "text", "primary": true },
+            "title": { "type": "text" },
+            "name": { "type": "text" },
+            "length_ft": { "type": "number" },
+            "year": { "type": "number" },
+            "manufacturer": { "type": "text" },
+            "model": { "type": "text" },
+            "location": { "type": "text" },
+            "prices": { "type": "json", "example": {"4h": 2500, "6h": 3500, "8h": 4500} },
+            "capacity": { "type": "json", "example": {"guests": 12, "sleeps": 6, "cabins": 3} },
+            "crew": { "type": "text" },
+            "amenities": { "type": "json_array" },
+            "experiences": { "type": "json_array" },
+            "highlights": { "type": "json_array" },
+            "calendar_url": { "type": "url", "pattern": "http://calendar.ycn.miami/{slug}" },
+            "media_url": { "type": "url", "pattern": "http://media.ycn.miami/{slug}" },
+            "drive_folder_id": { "type": "text" },
+            "drive_folder_url": { "type": "url" },
+            "status": { "type": "select", "options": ["active", "maintenance", "inactive", "pending"] },
+            "synced_at": { "type": "datetime" },
+            "last_content_generated_at": { "type": "datetime" }
+          }
+        },
+        "ASSETS": {
+          "fields": {
+            "asset_id": { "type": "text", "primary": true },
+            "yacht_id": { "type": "link", "table": "YACHTS" },
+            "type": { "type": "select", "options": ["video", "photo"] },
+            "filename": { "type": "text" },
+            "tag": { "type": "select", "options": ["drone", "exterior", "interior", "amenity", "lifestyle", "crew", "sunset", "ocean", "toys", "untagged"] },
+            "mime_type": { "type": "text" },
+            "size_bytes": { "type": "number" },
+            "duration_sec": { "type": "number" },
+            "url": { "type": "url" },
+            "thumbnail_url": { "type": "url" },
+            "indexed_at": { "type": "datetime" }
+          }
+        },
+        "CONTENT_PACKS": {
+          "fields": {
+            "pack_id": { "type": "autonumber", "primary": true },
+            "yacht_id": { "type": "link", "table": "YACHTS" },
+            "content_pack": { "type": "json" },
+            "qa_status": { "type": "select", "options": ["approved", "needs_revision", "rejected", "auto_fixed"] },
+            "brand_score": { "type": "number", "min": 1, "max": 10 },
+            "compliance_score": { "type": "number", "min": 1, "max": 10 },
+            "status": { "type": "select", "options": ["draft", "ready", "published"] },
+            "created_at": { "type": "datetime" }
+          }
+        },
+        "LEADS": {
+          "fields": {
+            "lead_id": { "type": "text", "primary": true },
+            "source": { "type": "select", "options": ["ig_dm", "tiktok_dm", "facebook", "whatsapp", "form", "phone", "email", "referral"] },
+            "yacht_id": { "type": "link", "table": "YACHTS" },
+            "name": { "type": "text" },
+            "contact": { "type": "json" },
+            "party_details": { "type": "json" },
+            "budget": { "type": "json" },
+            "qualification_score": { "type": "number", "min": 1, "max": 10 },
+            "status": { "type": "select", "options": ["new", "contacted", "qualified", "proposal_sent", "negotiating", "booked", "lost", "no_response"] },
+            "notes": { "type": "longtext" },
+            "raw_message": { "type": "longtext" },
+            "created_at": { "type": "datetime" }
+          }
+        }
+      }
+    },
+
+    "workflows": {
+      "import_order": [
+        "01_fleet_sync_ycn",
+        "02_media_resolver",
+        "05_asset_indexer",
+        "03_chakra_engine",
+        "04_lead_intake",
+        "06_video_processor_cloud",
+        "00_master_orchestrator"
+      ],
+
+      "01_fleet_sync_ycn": {
+        "name": "Chakra9 - 01 Fleet Sync YCN (Daily)",
+        "trigger": "schedule",
+        "schedule": "0 6 * * *",
+        "description": "Sync yachts from YCN brokers page",
+        "steps": [
+          { "action": "http_get", "url": "https://ycn.miami/brokers" },
+          { "action": "html_extract", "selector": ".yacht-card" },
+          { "action": "transform", "output": "yacht_objects" },
+          { "action": "upsert", "table": "YACHTS" }
+        ]
+      },
+
+      "02_media_resolver": {
+        "name": "Chakra9 - 02 Media Resolver",
+        "trigger": "webhook",
+        "webhook_path": "/resolve-media",
+        "description": "Resolve media.ycn.miami URLs to Google Drive folder IDs",
+        "steps": [
+          { "action": "http_head", "url": "{{media_url}}", "follow_redirects": false },
+          { "action": "extract_header", "header": "Location" },
+          { "action": "regex_extract", "pattern": "folders/([a-zA-Z0-9_-]+)" },
+          { "action": "update", "table": "YACHTS", "field": "drive_folder_id" }
+        ],
+        "code_node": "const loc = $json.headers?.location || $json.headers?.Location;\nif (!loc) return [{ error: 'No redirect Location header' }];\nconst m = loc.match(/folders\\/([a-zA-Z0-9_-]+)/);\nreturn [{ drive_folder_url: loc, drive_folder_id: m ? m[1] : null }];"
+      },
+
+      "03_chakra_engine": {
+        "name": "Chakra9 - 03 Chakra Engine (Content Pack Generator)",
+        "trigger": "webhook",
+        "webhook_path": "/generate-content",
+        "description": "Generate complete Content Pack using Claude + OpenAI",
+        "steps": [
+          { "action": "get_yacht", "from": "YACHTS" },
+          { "action": "get_assets", "from": "ASSETS", "filter": "yacht_id" },
+          { "action": "claude_creative", "role": "creative_director" },
+          { "action": "openai_performance", "role": "performance_marketer" },
+          { "action": "claude_qa", "role": "qa_reviewer" },
+          { "action": "merge_pack" },
+          { "action": "insert", "table": "CONTENT_PACKS" }
+        ]
+      },
+
+      "04_lead_intake": {
+        "name": "Chakra9 - 04 Lead Intake & CRM",
+        "trigger": "webhook",
+        "webhook_path": "/lead-capture",
+        "description": "Capture and qualify leads automatically",
+        "steps": [
+          { "action": "normalize_lead" },
+          { "action": "openai_qualify", "model": "gpt-4o-mini" },
+          { "action": "insert", "table": "LEADS" },
+          { "action": "if_hot_lead", "condition": "score >= 7" },
+          { "action": "slack_notify", "channel": "#leads" }
+        ]
+      },
+
+      "05_asset_indexer": {
+        "name": "Chakra9 - 05 Asset Indexer & Tagger",
+        "trigger": "webhook",
+        "webhook_path": "/index-assets",
+        "description": "Index Google Drive assets and auto-tag",
+        "steps": [
+          { "action": "google_drive_list", "folder_id": "{{drive_folder_id}}" },
+          { "action": "filter_media", "types": ["video/*", "image/*"] },
+          { "action": "auto_tag", "rules": "filename_keywords" },
+          { "action": "upsert", "table": "ASSETS" }
+        ],
+        "auto_tag_rules": {
+          "drone": ["drone", "aerial", "dji"],
+          "interior": ["interior", "cabin", "salon", "galley"],
+          "exterior": ["exterior", "deck", "bow", "stern"],
+          "ocean": ["sunset", "ocean", "sea", "water"],
+          "toys": ["jacuzzi", "jet", "toy", "jetski", "paddleboard"],
+          "crew": ["crew", "service", "chef", "captain"],
+          "lifestyle": ["lifestyle", "party", "guest", "champagne"]
+        }
+      },
+
+      "06_video_processor_cloud": {
+        "name": "Chakra9 - 06 Video Processor (Cloud)",
+        "trigger": "webhook",
+        "webhook_path": "/process-video",
+        "description": "Call external Video Factory for FFmpeg processing",
+        "requires": "external_worker",
+        "worker_url": "{{VIDEO_FACTORY_URL}}",
+        "steps": [
+          { "action": "prepare_job" },
+          { "action": "http_post", "url": "{{VIDEO_FACTORY_URL}}/process-clip-pack" },
+          { "action": "handle_response" }
+        ]
+      },
+
+      "00_master_orchestrator": {
+        "name": "Chakra9 - 00 Master Orchestrator",
+        "trigger": "schedule",
+        "schedule": "0 6 * * *",
+        "description": "Daily pipeline coordination",
+        "steps": [
+          { "action": "execute_workflow", "workflow": "01_fleet_sync_ycn" },
+          { "action": "execute_workflow", "workflow": "02_media_resolver" },
+          { "action": "execute_workflow", "workflow": "05_asset_indexer" },
+          { "action": "get_yachts", "filter": "needs_content" },
+          { "action": "loop", "execute": "03_chakra_engine" },
+          { "action": "slack_summary" }
+        ]
+      }
+    },
+
+    "prompts": {
+      "creative_director_claude": {
+        "system": "Tu es un Creative Director luxe pour Zeniva Travel (yacht charter Miami). Style: elite, minimal, confiance. Interdits: exagérations, promesses non vérifiées, mots comme 'incroyable', 'extraordinaire'. Toujours: CTA soft, disclaimers (availability/pricing may vary). Réponds STRICTEMENT en JSON conforme au schéma fourni.",
+        "user_template": "Yacht data:\n{{yacht_json}}\n\nAssets tags summary:\n{{assets_summary}}\n\nTask:\n1. Generate 10 creative angles (luxury_escape, bachelor_bash, sunset_romance, etc.)\n2. Write 5 scripts voiceover (20-35s each)\n3. Create on-screen text sets per angle\n\nOutput JSON with: creative_angles[], scripts[], on_screen_text_sets[]"
+      },
+
+      "performance_marketer_openai": {
+        "system": "You are a performance copywriter for luxury yacht charters in Miami. Your job: maximize engagement, clicks, and conversions. Output MUST be valid JSON matching the provided schema. Never use emojis in hooks. CTAs must include DM keywords.",
+        "user_template": "Yacht: {{yacht_json}}\nAngles: {{angles_json}}\n\nCreate:\n- 20 hooks (max 8 words each)\n- 10 CTA variations (DM keyword + link-in-bio types)\n- 3 caption sets (TikTok, IG Reels, Facebook)\n- Hashtag sets per platform (12-15 per platform)\n\nOutput JSON with: hooks[], cta_variations[], captions[], hashtag_sets[]",
+        "response_format": {
+          "type": "json_schema",
+          "name": "performance_pack",
+          "strict": true
+        }
+      },
+
+      "qa_guardrails": {
+        "system": "Tu es un QA reviewer pour du contenu yacht charter. Ta mission: vérifier que le contenu généré est conforme aux données source. REJETTE tout claim qui n'est pas dans les données yacht (features inventées, prix incorrects, capacités fausses).",
+        "user_template": "SOURCE DATA (vérité):\n{{yacht_json}}\n\nCONTENT TO REVIEW:\n{{content_pack_json}}\n\nVérifie:\n1. Tous les chiffres (prix, capacité, année) sont corrects\n2. Toutes les features mentionnées existent dans amenities/experiences\n3. Aucune promesse exagérée\n4. Tone luxe mais pas 'too much'\n\nOutput JSON: { qa_passed: boolean, issues: [], fixed_content: {} (si corrections mineures possibles), brand_score: 1-10, compliance_score: 1-10 }"
+      },
+
+      "lead_qualification": {
+        "system": "You are a lead qualification assistant for a luxury yacht charter company. Analyze lead data and extract/infer: guest count, preferred date, budget range, occasion type. Score lead quality 1-10 based on buying signals.",
+        "user_template": "Lead data:\n{{lead_json}}\n\nQualify this lead.\n\nOutput JSON: { qualification: { score: number, budget_verified: boolean, date_confirmed: boolean, guests: number, occasion: string, notes: string, recommended_yachts: [] } }"
+      }
+    },
+
+    "credentials_required": {
+      "anthropic_api": {
+        "type": "header_auth",
+        "name": "Anthropic API Key",
+        "header_name": "x-api-key",
+        "header_value": "{{ANTHROPIC_API_KEY}}"
+      },
+      "openai_api": {
+        "type": "header_auth",
+        "name": "OpenAI API Key",
+        "header_name": "Authorization",
+        "header_value": "Bearer {{OPENAI_API_KEY}}"
+      },
+      "google_drive": {
+        "type": "oauth2",
+        "name": "Google Drive OAuth2",
+        "scopes": ["https://www.googleapis.com/auth/drive.readonly"]
+      },
+      "airtable": {
+        "type": "token_api",
+        "name": "Airtable Token API"
+      },
+      "slack": {
+        "type": "oauth2",
+        "name": "Slack API",
+        "optional": true
+      }
+    },
+
+    "environment_variables": {
+      "AIRTABLE_BASE_ID": "appXXXXXXXXXXXXXX",
+      "VIDEO_FACTORY_URL": "https://your-worker.railway.app"
+    },
+
+    "webhook_endpoints": {
+      "generate_content": {
+        "method": "POST",
+        "path": "/webhook/generate-content",
+        "body": { "yacht_id": "string" },
+        "response": { "pack_id": "number", "status": "string" }
+      },
+      "resolve_media": {
+        "method": "POST",
+        "path": "/webhook/resolve-media",
+        "body": { "yacht_id": "string" },
+        "response": { "drive_folder_id": "string" }
+      },
+      "index_assets": {
+        "method": "POST",
+        "path": "/webhook/index-assets",
+        "body": { "yacht_id": "string" },
+        "response": { "total": "number", "videos": "number", "photos": "number" }
+      },
+      "lead_capture": {
+        "method": "POST",
+        "path": "/webhook/lead-capture",
+        "body": { "source": "string", "name": "string", "contact": "object", "message": "string" },
+        "response": { "lead_id": "string", "score": "number", "status": "string" }
+      },
+      "process_video": {
+        "method": "POST",
+        "path": "/webhook/process-video",
+        "body": { "yacht_id": "string", "source_file_id": "string", "clips": "array" },
+        "response": { "job_id": "string", "output_files": "array" }
+      },
+      "run_chakra9": {
+        "method": "POST",
+        "path": "/webhook/run-chakra9",
+        "body": {},
+        "response": { "yachts_processed": "number", "packs_generated": "number" }
+      }
+    },
+
+    "content_pack_output_schema": {
+      "yacht_id": "string",
+      "generated_at": "datetime",
+      "creative_angles": [
+        {
+          "angle_id": "string",
+          "name": "string",
+          "description": "string",
+          "target_emotion": "string",
+          "best_platforms": ["tiktok", "ig_reels", "facebook"]
+        }
+      ],
+      "scripts": [
+        {
+          "script_id": "string",
+          "angle": "string",
+          "duration_sec": "number",
+          "hook": "string",
+          "body": "string",
+          "cta": "string",
+          "full_script": "string"
+        }
+      ],
+      "on_screen_text_sets": [
+        {
+          "set_id": "string",
+          "angle": "string",
+          "texts": ["string"]
+        }
+      ],
+      "hooks": [
+        {
+          "hook": "string (max 8 words)",
+          "style": "curiosity|flex|fomo|question|statement|controversy",
+          "best_platform": "string"
+        }
+      ],
+      "captions": [
+        {
+          "platform": "tiktok|ig_reels|facebook",
+          "caption": "string",
+          "angle": "string"
+        }
+      ],
+      "cta_variations": [
+        {
+          "cta": "string",
+          "type": "dm_keyword|link_bio|comment|share",
+          "keyword": "string"
+        }
+      ],
+      "hashtag_sets": [
+        {
+          "platform": "string",
+          "hashtags": ["string"]
+        }
+      ],
+      "clip_plan": {
+        "total_clips": "number",
+        "clips": [
+          {
+            "clip_id": "string",
+            "platform": "string",
+            "angle": "string",
+            "duration_target_sec": "number",
+            "segments": [
+              {
+                "order": "number",
+                "asset_tag": "string",
+                "purpose": "hook|build|feature|payoff|cta",
+                "duration_sec": "number"
+              }
+            ],
+            "hook": "string",
+            "overlays": [
+              {
+                "text": "string",
+                "timing": "string",
+                "style": "bold|minimal|animated|price_tag"
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    "brand_guidelines": {
+      "tone": "luxury concierge, confident, minimal, elite",
+      "forbidden_words": ["amazing", "incredible", "unbelievable", "best ever", "guaranteed"],
+      "required_disclaimers": ["Availability subject to change", "Pricing may vary by season"],
+      "cta_keywords": ["YACHT", "MIAMI", "BOOK", "INFO", "CHARTER"],
+      "hashtag_rules": {
+        "always_include": ["#MiamiYacht", "#YachtCharter"],
+        "platform_specific": {
+          "tiktok": ["#fyp", "#foryou"],
+          "ig_reels": ["#reels", "#explore"]
+        }
+      }
+    },
+
+    "deployment": {
+      "n8n_cloud": {
+        "instance": "zenivatravel.app.n8n.cloud",
+        "workflows_supported": ["01", "02", "03", "04", "05"],
+        "video_processing": "external_worker_required"
+      },
+      "video_factory_worker": {
+        "deploy_to": "railway",
+        "url_pattern": "https://{app-name}.up.railway.app",
+        "endpoints": [
+          "POST /process-clip-pack",
+          "POST /cut-clips",
+          "POST /burn-subtitles",
+          "POST /extract-audio",
+          "GET /health"
+        ]
+      }
+    }
+  }
+}
