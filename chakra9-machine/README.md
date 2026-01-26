@@ -89,42 +89,54 @@ chakra9-machine/
 
 ## Quick Start
 
-### 1. Prerequisites
+### Choose Your Deployment
 
-- n8n (self-hosted or cloud)
-- OpenAI API key
-- Anthropic (Claude) API key
-- Google Drive API credentials
-- Airtable or Google Sheets
+| Option | Best For | Video Processing |
+|--------|----------|------------------|
+| **n8n Cloud** | Quick start, managed | Semi-auto (CapCut) or external worker |
+| **Self-Hosted** | Full control, FFmpeg direct | Full auto built-in |
 
-### 2. Import Workflows
+### n8n Cloud (e.g., zenivatravel.app.n8n.cloud)
 
 ```bash
-# Import in this order:
+# 1. Import workflows 01-05 (all work natively)
+# 2. Configure credentials in n8n UI
+# 3. For video processing: deploy worker to Railway (optional)
+```
+
+See [docs/DEPLOY_CLOUD.md](docs/DEPLOY_CLOUD.md)
+
+### Self-Hosted (Docker)
+
+```bash
+cd chakra9-machine
+cp .env.example .env
+docker-compose up -d
+```
+
+See [docs/INSTALL.md](docs/INSTALL.md)
+
+### Import Order
+
+```
 1. 01_fleet_sync_ycn.json
 2. 02_media_resolver.json
 3. 05_asset_indexer.json
 4. 03_chakra_engine.json
 5. 04_lead_intake.json
-6. 00_master_orchestrator.json (last)
+6. 06_video_processor_cloud.json  ← n8n Cloud
+   06_video_processor_ffmpeg.json ← Self-hosted
+7. 00_master_orchestrator.json (last)
 ```
 
-### 3. Configure Credentials
-
-- Set up Anthropic and OpenAI API keys in n8n
-- Configure Google Drive OAuth
-- Set Airtable/Sheets connection
-
-### 4. Run
+### Test
 
 ```bash
-# Trigger via webhook
-curl -X POST https://your-n8n/webhook/run-chakra9
-
-# Or wait for daily schedule (6 AM)
+# Generate content for a yacht
+curl -X POST https://your-n8n/webhook/generate-content \
+  -H "Content-Type: application/json" \
+  -d '{"yacht_id": "spysea"}'
 ```
-
-See [docs/INSTALL.md](docs/INSTALL.md) for detailed setup.
 
 ## AI Architecture
 
