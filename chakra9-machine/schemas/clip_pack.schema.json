@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeniva.travel/schemas/clip_pack.schema.json",
+  "title": "ClipPack",
+  "description": "OpenAI Structured Output schema for generating clip packs",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "yacht_id": {
+      "type": "string",
+      "description": "Reference to the yacht"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "creative_angles": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "angle_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "target_emotion": { "type": "string" },
+          "best_for_platform": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["tiktok", "ig_reels", "facebook", "youtube_shorts"] }
+          }
+        },
+        "required": ["angle_id", "name", "description", "target_emotion", "best_for_platform"]
+      }
+    },
+    "clips": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "clip_id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["tiktok", "ig_reels", "facebook", "youtube_shorts"]
+          },
+          "angle_id": {
+            "type": "string"
+          },
+          "duration_target_sec": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 90
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "order": { "type": "integer" },
+                "asset_tag": { "type": "string" },
+                "purpose": { "type": "string" },
+                "duration_sec": { "type": "number" },
+                "transition": { "type": "string", "enum": ["cut", "fade", "swipe", "zoom"] }
+              },
+              "required": ["order", "asset_tag", "purpose", "duration_sec", "transition"]
+            }
+          },
+          "hook": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "script": {
+            "type": "string"
+          },
+          "overlays": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": { "type": "string" },
+                "timing": { "type": "string" },
+                "style": { "type": "string", "enum": ["bold", "minimal", "animated", "price_tag"] }
+              },
+              "required": ["text", "timing", "style"]
+            }
+          },
+          "caption": {
+            "type": "string"
+          },
+          "hashtags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 5,
+            "maxItems": 30
+          },
+          "cta": {
+            "type": "string"
+          },
+          "cta_keyword": {
+            "type": "string"
+          },
+          "music_suggestion": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mood": { "type": "string" },
+              "bpm_range": { "type": "string" },
+              "genre": { "type": "string" }
+            },
+            "required": ["mood", "bpm_range", "genre"]
+          }
+        },
+        "required": ["clip_id", "platform", "angle_id", "duration_target_sec", "segments", "hook", "script", "overlays", "caption", "hashtags", "cta", "cta_keyword", "music_suggestion"]
+      }
+    },
+    "hooks_bank": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hook": { "type": "string" },
+          "style": { "type": "string", "enum": ["curiosity", "flex", "fomo", "question", "statement", "controversy"] },
+          "best_platform": { "type": "string" }
+        },
+        "required": ["hook", "style", "best_platform"]
+      }
+    },
+    "cta_variations": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cta": { "type": "string" },
+          "type": { "type": "string", "enum": ["dm_keyword", "link_bio", "comment", "share"] },
+          "keyword": { "type": "string" }
+        },
+        "required": ["cta", "type", "keyword"]
+      }
+    }
+  },
+  "required": ["yacht_id", "generated_at", "creative_angles", "clips", "hooks_bank", "cta_variations"]
+}

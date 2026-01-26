@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeniva.travel/schemas/yacht.schema.json",
+  "title": "Yacht",
+  "description": "Schema for yacht data in Chakra9 Content Machine",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "yacht_id": {
+      "type": "string",
+      "description": "Unique identifier/slug for the yacht (e.g., 'spysea')",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title (e.g., '70ft Azimut 68 Fly (2023)')"
+    },
+    "name": {
+      "type": "string",
+      "description": "Yacht name"
+    },
+    "length_ft": {
+      "type": "number",
+      "description": "Length in feet"
+    },
+    "year": {
+      "type": "integer",
+      "description": "Year built/model year"
+    },
+    "manufacturer": {
+      "type": "string",
+      "description": "Yacht manufacturer (e.g., 'Azimut')"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model name (e.g., '68 Fly')"
+    },
+    "location": {
+      "type": "string",
+      "description": "Departure location (e.g., 'Haulover Marina')"
+    },
+    "prices": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "4h": { "type": "string" },
+        "6h": { "type": "string" },
+        "8h": { "type": "string" },
+        "overnight": { "type": "string" }
+      },
+      "description": "Pricing tiers"
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "guests": { "type": "integer", "description": "Max guests" },
+        "sleeps": { "type": "integer", "description": "Sleeping capacity" },
+        "cabins": { "type": "integer", "description": "Number of cabins" }
+      }
+    },
+    "crew": {
+      "type": "string",
+      "description": "Crew configuration (e.g., 'Captain + Stewardess')"
+    },
+    "amenities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of amenities"
+    },
+    "experiences": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Available experiences (jet ski, catering, etc.)"
+    },
+    "highlights": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key selling points"
+    },
+    "calendar_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "YCN calendar link"
+    },
+    "media_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "YCN media link"
+    },
+    "drive_folder_id": {
+      "type": ["string", "null"],
+      "description": "Google Drive folder ID for assets"
+    },
+    "drive_folder_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Full Google Drive folder URL"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "maintenance", "inactive", "pending"],
+      "default": "active"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["yacht_id", "title", "location", "status"]
+}

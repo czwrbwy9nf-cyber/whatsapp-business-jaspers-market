@@ -1,0 +1,193 @@
+{
+  "yacht_id": "spysea",
+  "generated_at": "2026-01-26T12:00:00.000Z",
+  "yacht_profile": {
+    "yacht_id": "spysea",
+    "title": "70ft Azimut 68 Fly (2023)",
+    "location": "Haulover Marina",
+    "capacity": { "guests": 12, "sleeps": 6, "cabins": 3 },
+    "crew": "Captain + Stewardess",
+    "amenities": ["Flybridge with jacuzzi", "Full bar", "Starlink WiFi", "JBL sound system"]
+  },
+
+  "creative_angles": [
+    {
+      "angle_id": "luxury_escape",
+      "name": "Luxury Escape",
+      "description": "Escape the ordinary. Experience Miami from the water.",
+      "target_emotion": "aspiration",
+      "best_platforms": ["ig_reels", "facebook"]
+    },
+    {
+      "angle_id": "bachelor_bash",
+      "name": "Bachelor Bash",
+      "description": "The ultimate bachelor party on a private yacht.",
+      "target_emotion": "excitement",
+      "best_platforms": ["tiktok", "ig_reels"]
+    },
+    {
+      "angle_id": "sunset_romance",
+      "name": "Sunset Romance",
+      "description": "Private sunset cruise for couples and proposals.",
+      "target_emotion": "romance",
+      "best_platforms": ["ig_reels", "facebook"]
+    },
+    {
+      "angle_id": "corporate_retreat",
+      "name": "Corporate Retreat",
+      "description": "Impress clients with a floating boardroom.",
+      "target_emotion": "prestige",
+      "best_platforms": ["facebook", "ig_reels"]
+    },
+    {
+      "angle_id": "birthday_flex",
+      "name": "Birthday Flex",
+      "description": "Celebrate your birthday like a VIP.",
+      "target_emotion": "celebration",
+      "best_platforms": ["tiktok", "ig_reels"]
+    }
+  ],
+
+  "scripts": [
+    {
+      "script_id": "script_01",
+      "angle": "luxury_escape",
+      "duration_sec": 28,
+      "hook": "This is what $3,500 gets you in Miami...",
+      "body": "A 70-foot floating paradise. Full crew at your service. Jacuzzi on the flybridge. Starlink WiFi so you can make everyone jealous in real-time.",
+      "cta": "DM 'YACHT' for available dates.",
+      "full_script": "This is what $3,500 gets you in Miami... A 70-foot floating paradise. Full crew at your service. Jacuzzi on the flybridge. Starlink WiFi so you can make everyone jealous in real-time. DM 'YACHT' for available dates."
+    },
+    {
+      "script_id": "script_02",
+      "angle": "birthday_flex",
+      "duration_sec": 25,
+      "hook": "Birthday in Miami? Say less.",
+      "body": "Private yacht. Up to 12 friends. Full bar included. Your own captain and stewardess. This is how you do it.",
+      "cta": "Link in bio to book.",
+      "full_script": "Birthday in Miami? Say less. Private yacht. Up to 12 friends. Full bar included. Your own captain and stewardess. This is how you do it. Link in bio to book."
+    }
+  ],
+
+  "on_screen_text_sets": [
+    {
+      "set_id": "set_01",
+      "angle": "luxury_escape",
+      "texts": [
+        "70ft of pure luxury",
+        "Full crew included",
+        "Jacuzzi on deck",
+        "Starting $3,500",
+        "DM 'YACHT'"
+      ]
+    },
+    {
+      "set_id": "set_02",
+      "angle": "birthday_flex",
+      "texts": [
+        "Your birthday. Upgraded.",
+        "12 guests",
+        "Private yacht",
+        "Full bar",
+        "Book now"
+      ]
+    }
+  ],
+
+  "hooks": [
+    { "hook": "POV: You rented the whole yacht", "style": "flex", "best_platform": "tiktok" },
+    { "hook": "This is what $3,500 gets you", "style": "curiosity", "best_platform": "tiktok" },
+    { "hook": "Birthday in Miami? Say less.", "style": "statement", "best_platform": "tiktok" },
+    { "hook": "Stop scrolling. Look at this.", "style": "curiosity", "best_platform": "ig_reels" },
+    { "hook": "Your group. Private yacht. Miami.", "style": "statement", "best_platform": "ig_reels" },
+    { "hook": "This is how Miami does it", "style": "flex", "best_platform": "tiktok" },
+    { "hook": "70 feet of floating luxury", "style": "statement", "best_platform": "ig_reels" },
+    { "hook": "Why rent a club when...", "style": "curiosity", "best_platform": "tiktok" },
+    { "hook": "Bachelor party done right", "style": "statement", "best_platform": "tiktok" },
+    { "hook": "The yacht they won't stop asking about", "style": "fomo", "best_platform": "ig_reels" }
+  ],
+
+  "captions": [
+    {
+      "platform": "tiktok",
+      "caption": "70ft of floating luxury in Miami 🛥️ Full crew, jacuzzi on deck, up to 12 friends. This is how you do it.\n\nDM 'YACHT' for dates\n\n#MiamiYacht #YachtParty #MiamiBoatRental",
+      "angle": "luxury_escape"
+    },
+    {
+      "platform": "ig_reels",
+      "caption": "Experience Miami from the water on this stunning 70ft Azimut.\n\n✨ Brand new 2023 model\n🛥️ Up to 12 guests\n👨‍✈️ Professional crew included\n🌅 Perfect for celebrations\n\nLimited availability this season. Link in bio for dates.\n\n#MiamiYachts #LuxuryYachtCharter #MiamiBoatRental #YachtLife #MiamiLuxury",
+      "angle": "luxury_escape"
+    },
+    {
+      "platform": "facebook",
+      "caption": "Looking for the ultimate Miami experience? \n\nOur 70ft Azimut 68 Fly is the perfect choice for groups up to 12. Brand new 2023 model with flybridge jacuzzi, full bar, and professional crew.\n\nStarting at $3,500 for 4 hours.\n\n🔗 Book your charter: [Link]\n📩 Or DM us for custom packages\n\nAvailability is limited for peak season. Reserve your date today.",
+      "angle": "luxury_escape"
+    }
+  ],
+
+  "cta_variations": [
+    { "cta": "DM 'YACHT' for availability", "type": "dm_keyword", "keyword": "YACHT" },
+    { "cta": "DM 'MIAMI' to book", "type": "dm_keyword", "keyword": "MIAMI" },
+    { "cta": "Link in bio for dates", "type": "link_bio", "keyword": "" },
+    { "cta": "Comment 'INFO' for details", "type": "comment", "keyword": "INFO" },
+    { "cta": "Save this for your next trip", "type": "share", "keyword": "" },
+    { "cta": "Tag someone who needs this", "type": "share", "keyword": "" }
+  ],
+
+  "hashtag_sets": [
+    {
+      "platform": "tiktok",
+      "hashtags": [
+        "#MiamiYacht", "#YachtParty", "#MiamiBoatRental", "#LuxuryYacht",
+        "#MiamiLife", "#YachtLife", "#BoatDay", "#MiamiVibes",
+        "#BachelorParty", "#BirthdayParty", "#MiamiLuxury", "#fyp"
+      ]
+    },
+    {
+      "platform": "ig_reels",
+      "hashtags": [
+        "#MiamiYachts", "#LuxuryYachtCharter", "#MiamiBoatRental", "#YachtLife",
+        "#MiamiLuxury", "#PrivateYacht", "#YachtCharter", "#MiamiBoating",
+        "#LuxuryLifestyle", "#MiamiParty", "#OceanViews", "#BoatLife",
+        "#YachtRental", "#MiamiExperience", "#FloridaBoating"
+      ]
+    },
+    {
+      "platform": "facebook",
+      "hashtags": [
+        "#MiamiYachtCharter", "#BoatRentalMiami", "#LuxuryYacht", "#MiamiBoating",
+        "#PrivateCharter", "#YachtParty", "#MiamiBirthday", "#CorporateEvents",
+        "#MiamiWedding", "#BachelorPartyMiami"
+      ]
+    }
+  ],
+
+  "clip_plan": {
+    "total_clips": 6,
+    "clips": [
+      {
+        "clip_id": "clip_tiktok_01",
+        "platform": "tiktok",
+        "angle": "luxury_escape",
+        "duration_target_sec": 22,
+        "segments": [
+          { "order": 1, "asset_tag": "drone", "purpose": "hook", "duration_sec": 2.5 },
+          { "order": 2, "asset_tag": "exterior", "purpose": "reveal", "duration_sec": 3 },
+          { "order": 3, "asset_tag": "interior", "purpose": "feature", "duration_sec": 4 },
+          { "order": 4, "asset_tag": "toys", "purpose": "feature", "duration_sec": 3 },
+          { "order": 5, "asset_tag": "lifestyle", "purpose": "lifestyle", "duration_sec": 5 },
+          { "order": 6, "asset_tag": "sunset", "purpose": "cta", "duration_sec": 4.5 }
+        ],
+        "hook": "This is what $3,500 gets you",
+        "overlays": [
+          { "text": "70ft Azimut", "timing": "2-5s", "style": "bold" },
+          { "text": "Full crew included", "timing": "8-11s", "style": "minimal" },
+          { "text": "Up to 12 guests", "timing": "14-17s", "style": "minimal" },
+          { "text": "DM 'YACHT'", "timing": "18-22s", "style": "bold" }
+        ]
+      }
+    ]
+  },
+
+  "status": "draft"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "chakra9-video-factory",
+  "version": "1.0.0",
+  "description": "FFmpeg-based video processing worker for Chakra9 Content Machine",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "docker:build": "docker build -t chakra9-video-factory .",
+    "docker:run": "docker run -p 3000:3000 chakra9-video-factory"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "@google-cloud/storage": "^7.7.0",
+    "googleapis": "^131.0.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

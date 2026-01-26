@@ -1,0 +1,232 @@
+{
+  "name": "Chakra9 - 01 Fleet Sync YCN (Daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily Sync Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://ycn.miami/brokers",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "http-fetch-brokers",
+      "name": "Fetch YCN Brokers Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ \nconst html = $json.body;\nconst yachts = [];\n\n// Parse yacht cards from HTML\n// This regex pattern extracts yacht data from the brokers page\nconst yachtPattern = /<div[^>]*class=\"[^\"]*yacht-card[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi;\nconst matches = html.match(yachtPattern) || [];\n\nfor (const match of matches) {\n  // Extract slug from links\n  const slugMatch = match.match(/href=\"[^\"]*\\/([a-z0-9-]+)\"/);\n  const titleMatch = match.match(/<h[23][^>]*>([^<]+)<\\/h[23]>/);\n  const locationMatch = match.match(/location[^>]*>([^<]+)</);\n  \n  if (slugMatch) {\n    yachts.push({\n      yacht_id: slugMatch[1],\n      title: titleMatch ? titleMatch[1].trim() : slugMatch[1],\n      location: locationMatch ? locationMatch[1].trim() : 'Miami',\n      calendar_url: `http://calendar.ycn.miami/${slugMatch[1]}`,\n      media_url: `http://media.ycn.miami/${slugMatch[1]}`,\n      status: 'active',\n      synced_at: new Date().toISOString()\n    });\n  }\n}\n\nreturn yachts;\n}}"
+      },
+      "id": "parse-yachts",
+      "name": "Parse Yacht Cards",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Alternative HTML parsing with more robust extraction\nconst html = $input.first().json.body || '';\nconst yachts = [];\n\n// Try multiple selectors/patterns\nconst patterns = [\n  // Pattern 1: Look for yacht links\n  /href=\"(?:https?:\\/\\/)?(?:www\\.)?ycn\\.miami\\/yacht\\/([a-z0-9-]+)\"/gi,\n  // Pattern 2: Look for calendar links\n  /calendar\\.ycn\\.miami\\/([a-z0-9-]+)/gi,\n  // Pattern 3: Look for media links  \n  /media\\.ycn\\.miami\\/([a-z0-9-]+)/gi\n];\n\nconst foundSlugs = new Set();\n\nfor (const pattern of patterns) {\n  let match;\n  while ((match = pattern.exec(html)) !== null) {\n    foundSlugs.add(match[1]);\n  }\n}\n\n// Convert to yacht objects\nfor (const slug of foundSlugs) {\n  yachts.push({\n    yacht_id: slug,\n    title: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),\n    location: 'Miami',\n    calendar_url: `http://calendar.ycn.miami/${slug}`,\n    media_url: `http://media.ycn.miami/${slug}`,\n    drive_folder_id: null,\n    status: 'active',\n    synced_at: new Date().toISOString()\n  });\n}\n\nreturn yachts.map(y => ({ json: y }));"
+      },
+      "id": "code-parse-html",
+      "name": "Extract Yachts (Code)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 200]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-batches",
+      "name": "Split Into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YACHTS"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{ $json.yacht_id }}",
+            "title": "={{ $json.title }}",
+            "location": "={{ $json.location }}",
+            "calendar_url": "={{ $json.calendar_url }}",
+            "media_url": "={{ $json.media_url }}",
+            "drive_folder_id": "={{ $json.drive_folder_id }}",
+            "status": "={{ $json.status }}",
+            "synced_at": "={{ $json.synced_at }}"
+          }
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "sheets-upsert",
+      "name": "Upsert to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [880, 0],
+      "notes": "Replace documentId with your Google Sheet ID"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YACHTS"
+        },
+        "id": "={{ $json.yacht_id }}",
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              { "column": "title", "value": "={{ $json.title }}" },
+              { "column": "location", "value": "={{ $json.location }}" },
+              { "column": "calendar_url", "value": "={{ $json.calendar_url }}" },
+              { "column": "media_url", "value": "={{ $json.media_url }}" },
+              { "column": "status", "value": "={{ $json.status }}" },
+              { "column": "synced_at", "value": "={{ $json.synced_at }}" }
+            ]
+          }
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "airtable-upsert",
+      "name": "Upsert to Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [880, 200],
+      "notes": "Alternative: Use Airtable instead of Sheets"
+    },
+    {
+      "parameters": {
+        "content": "## Fleet Sync YCN (Chakra 1 & 2)\n\nThis workflow:\n1. Fetches the YCN brokers page daily\n2. Extracts yacht data (slug, title, links)\n3. Upserts to your database (Sheets or Airtable)\n\n### Setup Required:\n- Configure Google Sheets OR Airtable credentials\n- Set your document/base ID\n- Create YACHTS table with columns matching schema",
+        "height": 220,
+        "width": 380
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "yachts_synced",
+              "value": "={{ $items().length }}"
+            }
+          ],
+          "string": [
+            {
+              "name": "sync_status",
+              "value": "completed"
+            },
+            {
+              "name": "completed_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-summary",
+      "name": "Set Sync Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1100, 0]
+    }
+  ],
+  "connections": {
+    "Daily Sync Trigger": {
+      "main": [
+        [
+          { "node": "Fetch YCN Brokers Page", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch YCN Brokers Page": {
+      "main": [
+        [
+          { "node": "Extract Yachts (Code)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Yachts (Code)": {
+      "main": [
+        [
+          { "node": "Split Into Batches", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Split Into Batches": {
+      "main": [
+        [
+          { "node": "Upsert to Google Sheets", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Set Sync Summary", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "yacht" },
+    { "name": "sync" }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-01-26T00:00:00.000Z",
+  "versionId": "1"
+}

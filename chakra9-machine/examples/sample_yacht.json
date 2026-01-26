@@ -1,0 +1,51 @@
+{
+  "yacht_id": "spysea",
+  "title": "70ft Azimut 68 Fly (2023)",
+  "name": "Spy Sea",
+  "length_ft": 70,
+  "year": 2023,
+  "manufacturer": "Azimut",
+  "model": "68 Fly",
+  "location": "Haulover Marina",
+  "prices": {
+    "4h": "$3,500",
+    "6h": "$4,800",
+    "8h": "$6,200",
+    "overnight": "Inquire"
+  },
+  "capacity": {
+    "guests": 12,
+    "sleeps": 6,
+    "cabins": 3
+  },
+  "crew": "Captain + Stewardess",
+  "amenities": [
+    "Flybridge with jacuzzi",
+    "Full bar",
+    "Starlink WiFi",
+    "JBL sound system",
+    "Floating mat",
+    "Snorkeling gear",
+    "Paddleboards"
+  ],
+  "experiences": [
+    "Jet ski (additional)",
+    "Chef service",
+    "Photographer",
+    "Sunset cruise package",
+    "Sandbar party"
+  ],
+  "highlights": [
+    "Brand new 2023 model",
+    "Spacious flybridge",
+    "Professional crew included",
+    "Perfect for groups up to 12"
+  ],
+  "calendar_url": "http://calendar.ycn.miami/spysea",
+  "media_url": "http://media.ycn.miami/spysea",
+  "drive_folder_id": "1abc123def456ghi789jkl",
+  "drive_folder_url": "https://drive.google.com/drive/folders/1abc123def456ghi789jkl",
+  "status": "active",
+  "synced_at": "2026-01-26T10:00:00.000Z",
+  "last_content_generated_at": null
+}

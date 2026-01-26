@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeniva.travel/schemas/lead.schema.json",
+  "title": "Lead",
+  "description": "Schema for leads captured through content",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique lead ID"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["ig_dm", "tiktok_dm", "facebook", "whatsapp", "form", "phone", "email", "referral"],
+      "description": "Lead acquisition channel"
+    },
+    "source_content_id": {
+      "type": ["string", "null"],
+      "description": "Content piece that generated the lead"
+    },
+    "yacht_id": {
+      "type": ["string", "null"],
+      "description": "Yacht of interest"
+    },
+    "trigger_keyword": {
+      "type": ["string", "null"],
+      "description": "DM keyword that triggered (e.g., 'YACHT')"
+    },
+    "name": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "ig_handle": { "type": "string" },
+        "tiktok_handle": { "type": "string" }
+      }
+    },
+    "party_details": {
+      "type": "object",
+      "properties": {
+        "guests": { "type": "integer" },
+        "date": { "type": "string", "format": "date" },
+        "duration_hours": { "type": "integer" },
+        "occasion": { "type": "string" }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "currency": { "type": "string", "default": "USD" }
+      }
+    },
+    "preferences": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Requested amenities/experiences"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "qualification": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Lead quality score"
+        },
+        "budget_verified": { "type": "boolean" },
+        "date_confirmed": { "type": "boolean" },
+        "response_time_sec": { "type": "integer" }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["new", "contacted", "qualified", "proposal_sent", "negotiating", "booked", "lost", "no_response"],
+      "default": "new"
+    },
+    "assigned_to": {
+      "type": ["string", "null"],
+      "description": "Team member assigned"
+    },
+    "conversion": {
+      "type": "object",
+      "properties": {
+        "booking_id": { "type": "string" },
+        "booking_value": { "type": "number" },
+        "booking_date": { "type": "string", "format": "date" }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_contact_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+  "required": ["lead_id", "source", "status", "created_at"]
+}

@@ -1,0 +1,240 @@
+{
+  "name": "Chakra9 - 04 Lead Intake & CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-lead",
+      "name": "Lead Capture Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "lead-capture"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dm-keyword",
+        "options": {}
+      },
+      "id": "webhook-dm",
+      "name": "DM Keyword Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 200],
+      "webhookId": "dm-keyword"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize incoming lead data\nconst input = $input.first().json;\nconst body = input.body || input;\n\nconst lead = {\n  lead_id: `lead_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n  source: body.source || 'webhook',\n  source_content_id: body.content_id || null,\n  yacht_id: body.yacht_id || null,\n  trigger_keyword: body.keyword || body.trigger_keyword || null,\n  \n  name: body.name || '',\n  contact: {\n    phone: body.phone || body.contact?.phone || '',\n    email: body.email || body.contact?.email || '',\n    ig_handle: body.ig_handle || body.contact?.ig_handle || '',\n    tiktok_handle: body.tiktok_handle || body.contact?.tiktok_handle || ''\n  },\n  \n  party_details: {\n    guests: parseInt(body.guests) || null,\n    date: body.date || null,\n    duration_hours: parseInt(body.duration) || null,\n    occasion: body.occasion || ''\n  },\n  \n  budget: {\n    min: parseFloat(body.budget_min) || null,\n    max: parseFloat(body.budget_max) || null,\n    currency: 'USD'\n  },\n  \n  preferences: body.preferences || [],\n  notes: body.notes || body.message || '',\n  \n  raw_message: body.raw_message || body.message || '',\n  \n  status: 'new',\n  created_at: new Date().toISOString(),\n  updated_at: new Date().toISOString()\n};\n\nreturn [{ json: lead }];"
+      },
+      "id": "normalize-lead",
+      "name": "Normalize Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a lead qualification assistant for a luxury yacht charter company. Analyze the lead data and extract/infer: guests count, preferred date, budget range, occasion type. Score lead quality 1-10. Output JSON: { qualification: { score: number, budget_verified: boolean, date_confirmed: boolean, guests: number, occasion: string, notes: string } }\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Lead data:\\n{{ JSON.stringify($json) }}\\n\\nQualify this lead.\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" },\n  \"max_tokens\": 500\n}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "qualify-lead",
+      "name": "AI Lead Qualification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "OpenAI API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge qualification with lead\nconst lead = $('Normalize Lead Data').first().json;\nconst qualRaw = $input.first().json;\n\nlet qualification = { score: 5, budget_verified: false, date_confirmed: false };\ntry {\n  const parsed = JSON.parse(qualRaw.choices?.[0]?.message?.content || '{}');\n  qualification = parsed.qualification || qualification;\n} catch (e) {}\n\n// Update lead with qualification\nlead.qualification = qualification;\nlead.status = qualification.score >= 7 ? 'qualified' : 'new';\n\n// Determine response template based on score\nlet responseTemplate = 'standard';\nif (qualification.score >= 8) responseTemplate = 'hot_lead';\nelse if (qualification.score <= 3) responseTemplate = 'low_priority';\n\nreturn [{\n  json: {\n    lead,\n    responseTemplate,\n    shouldNotify: qualification.score >= 7\n  }\n}];"
+      },
+      "id": "merge-qualification",
+      "name": "Merge Qualification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "LEADS" },
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              { "column": "lead_id", "value": "={{ $json.lead.lead_id }}" },
+              { "column": "source", "value": "={{ $json.lead.source }}" },
+              { "column": "yacht_id", "value": "={{ $json.lead.yacht_id }}" },
+              { "column": "name", "value": "={{ $json.lead.name }}" },
+              { "column": "contact", "value": "={{ JSON.stringify($json.lead.contact) }}" },
+              { "column": "party_details", "value": "={{ JSON.stringify($json.lead.party_details) }}" },
+              { "column": "budget", "value": "={{ JSON.stringify($json.lead.budget) }}" },
+              { "column": "qualification_score", "value": "={{ $json.lead.qualification.score }}" },
+              { "column": "status", "value": "={{ $json.lead.status }}" },
+              { "column": "notes", "value": "={{ $json.lead.notes }}" },
+              { "column": "raw_message", "value": "={{ $json.lead.raw_message }}" },
+              { "column": "created_at", "value": "={{ $json.lead.created_at }}" }
+            ]
+          }
+        }
+      },
+      "id": "save-lead",
+      "name": "Save Lead to Database",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "hot-lead-check",
+              "operator": { "type": "boolean", "operation": "true" },
+              "leftValue": "={{ $json.shouldNotify }}",
+              "rightValue": ""
+            }
+          ]
+        }
+      },
+      "id": "if-hot-lead",
+      "name": "IF Hot Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "channel": "#leads",
+        "text": "=:fire: *Hot Lead Alert!*\n\n*Name:* {{ $json.lead.name || 'Unknown' }}\n*Source:* {{ $json.lead.source }}\n*Yacht Interest:* {{ $json.lead.yacht_id || 'Not specified' }}\n*Score:* {{ $json.lead.qualification.score }}/10\n*Guests:* {{ $json.lead.party_details.guests || 'TBD' }}\n*Date:* {{ $json.lead.party_details.date || 'TBD' }}\n\n*Message:* {{ $json.lead.raw_message || $json.lead.notes || 'No message' }}\n\n<{{ $env.AIRTABLE_BASE_URL }}/LEADS|View in CRM>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Slack: Hot Lead Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1100, 100],
+      "credentials": {
+        "slackApi": { "id": "", "name": "Slack" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare auto-response based on template\nconst data = $input.first().json;\nconst template = data.responseTemplate;\nconst lead = data.lead;\n\nconst templates = {\n  hot_lead: `Hi ${lead.name || 'there'}! Thanks for your interest in ${lead.yacht_id ? 'the ' + lead.yacht_id : 'our yachts'}. One of our charter specialists will reach out within the hour to help plan your perfect day on the water. In the meantime, feel free to browse our fleet at zenivatravel.com`,\n  \n  standard: `Thanks for reaching out! We'd love to help you plan an unforgettable yacht experience in Miami. Could you share: 1) Your preferred date 2) Number of guests 3) Any special occasion? Our team will follow up shortly!`,\n  \n  low_priority: `Thanks for your message! Check out our yacht options at zenivatravel.com. For immediate availability, DM us with your preferred date and group size.`\n};\n\nreturn [{\n  json: {\n    lead_id: lead.lead_id,\n    contact: lead.contact,\n    response_message: templates[template] || templates.standard,\n    template_used: template\n  }\n}];"
+      },
+      "id": "prep-response",
+      "name": "Prepare Auto-Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, lead_id: $('Merge Qualification').first().json.lead.lead_id, status: $('Merge Qualification').first().json.lead.status, score: $('Merge Qualification').first().json.lead.qualification.score } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Lead Intake & CRM (Chakra 9)\n\n### Flow:\n1. Receive lead via webhook (form, DM automation, WhatsApp)\n2. Normalize data structure\n3. AI qualification (score, extract details)\n4. Save to database\n5. Hot lead? → Slack notification\n6. Prepare auto-response\n\n### Integration Points:\n- WhatsApp webhook (from main app)\n- Instagram DM automation (ManyChat/etc)\n- Website forms\n- TikTok lead capture",
+        "height": 260,
+        "width": 360
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -80]
+    }
+  ],
+  "connections": {
+    "Lead Capture Webhook": {
+      "main": [
+        [
+          { "node": "Normalize Lead Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "DM Keyword Webhook": {
+      "main": [
+        [
+          { "node": "Normalize Lead Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Normalize Lead Data": {
+      "main": [
+        [
+          { "node": "AI Lead Qualification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "AI Lead Qualification": {
+      "main": [
+        [
+          { "node": "Merge Qualification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Merge Qualification": {
+      "main": [
+        [
+          { "node": "Save Lead to Database", "type": "main", "index": 0 },
+          { "node": "IF Hot Lead", "type": "main", "index": 0 },
+          { "node": "Prep Auto-Response", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Lead to Database": {
+      "main": [
+        [
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Hot Lead": {
+      "main": [
+        [
+          { "node": "Slack: Hot Lead Alert", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "leads" },
+    { "name": "crm" }
+  ],
+  "triggerCount": 2
+}

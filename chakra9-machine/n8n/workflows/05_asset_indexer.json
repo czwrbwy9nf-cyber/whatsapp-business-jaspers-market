@@ -1,0 +1,175 @@
+{
+  "name": "Chakra9 - 05 Asset Indexer & Tagger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "index-assets",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Index Assets Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "index-assets"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "YACHTS" },
+        "id": "={{ $json.body.yacht_id }}"
+      },
+      "id": "get-yacht",
+      "name": "Get Yacht Data",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "fileList",
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.drive_folder_id }}"
+        },
+        "options": {
+          "fields": "id,name,mimeType,size,modifiedTime,thumbnailLink,webContentLink"
+        }
+      },
+      "id": "list-drive-files",
+      "name": "List Google Drive Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [440, 0],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "", "name": "Google Drive" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Drive files into assets\nconst yachtData = $('Get Yacht Data').first().json;\nconst files = $input.all().map(i => i.json);\n\nconst videoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];\nconst imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];\n\nconst assets = files.map(file => {\n  const isVideo = videoTypes.some(t => file.mimeType?.includes(t) || file.mimeType?.startsWith('video/'));\n  const isImage = imageTypes.some(t => file.mimeType?.includes(t) || file.mimeType?.startsWith('image/'));\n  \n  if (!isVideo && !isImage) return null;\n  \n  // Auto-tag based on filename\n  const name = (file.name || '').toLowerCase();\n  let autoTag = 'untagged';\n  \n  if (name.includes('drone') || name.includes('aerial') || name.includes('dji')) autoTag = 'drone';\n  else if (name.includes('interior') || name.includes('cabin') || name.includes('salon')) autoTag = 'interior';\n  else if (name.includes('exterior') || name.includes('deck')) autoTag = 'exterior';\n  else if (name.includes('sunset') || name.includes('ocean') || name.includes('sea')) autoTag = 'ocean';\n  else if (name.includes('jacuzzi') || name.includes('jet') || name.includes('toy')) autoTag = 'toys';\n  else if (name.includes('crew') || name.includes('service') || name.includes('chef')) autoTag = 'crew';\n  else if (name.includes('lifestyle') || name.includes('party') || name.includes('guest')) autoTag = 'lifestyle';\n  \n  return {\n    asset_id: file.id,\n    yacht_id: yachtData.yacht_id,\n    type: isVideo ? 'video' : 'photo',\n    filename: file.name,\n    tag: autoTag,\n    mime_type: file.mimeType,\n    size_bytes: parseInt(file.size) || 0,\n    url: file.webContentLink || `https://drive.google.com/file/d/${file.id}/view`,\n    thumbnail_url: file.thumbnailLink || null,\n    modified_at: file.modifiedTime,\n    indexed_at: new Date().toISOString()\n  };\n}).filter(Boolean);\n\nreturn assets.map(a => ({ json: a }));"
+      },
+      "id": "process-files",
+      "name": "Process Files to Assets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "batch-assets",
+      "name": "Batch Assets",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "ASSETS" },
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              { "column": "asset_id", "value": "={{ $json.asset_id }}" },
+              { "column": "yacht_id", "value": "={{ $json.yacht_id }}" },
+              { "column": "type", "value": "={{ $json.type }}" },
+              { "column": "filename", "value": "={{ $json.filename }}" },
+              { "column": "tag", "value": "={{ $json.tag }}" },
+              { "column": "mime_type", "value": "={{ $json.mime_type }}" },
+              { "column": "size_bytes", "value": "={{ $json.size_bytes }}" },
+              { "column": "url", "value": "={{ $json.url }}" },
+              { "column": "thumbnail_url", "value": "={{ $json.thumbnail_url }}" },
+              { "column": "indexed_at", "value": "={{ $json.indexed_at }}" }
+            ]
+          }
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "upsert-assets",
+      "name": "Upsert Assets to DB",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summarize indexed assets\nconst assets = $('Process Files to Assets').all().map(i => i.json);\n\nconst summary = {\n  total: assets.length,\n  videos: assets.filter(a => a.type === 'video').length,\n  photos: assets.filter(a => a.type === 'photo').length,\n  byTag: {}\n};\n\nassets.forEach(a => {\n  summary.byTag[a.tag] = (summary.byTag[a.tag] || 0) + 1;\n});\n\nreturn [{ json: summary }];"
+      },
+      "id": "summarize",
+      "name": "Create Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Asset Indexer & Tagger (Chakra 4)\n\n### Flow:\n1. Receive yacht_id\n2. Get yacht's Drive folder ID\n3. List all files in folder\n4. Filter videos/photos\n5. Auto-tag based on filename\n6. Upsert to ASSETS table\n\n### Auto-Tag Rules:\n- drone/aerial/dji → drone\n- interior/cabin/salon → interior\n- exterior/deck → exterior\n- sunset/ocean → ocean\n- jacuzzi/jet/toy → toys\n- crew/service → crew\n- lifestyle/party → lifestyle",
+        "height": 300,
+        "width": 340
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -80]
+    }
+  ],
+  "connections": {
+    "Index Assets Webhook": {
+      "main": [
+        [
+          { "node": "Get Yacht Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Yacht Data": {
+      "main": [
+        [
+          { "node": "List Google Drive Files", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "List Google Drive Files": {
+      "main": [
+        [
+          { "node": "Process Files to Assets", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Process Files to Assets": {
+      "main": [
+        [
+          { "node": "Batch Assets", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Batch Assets": {
+      "main": [
+        [
+          { "node": "Upsert Assets to DB", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Create Summary", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "assets" },
+    { "name": "indexer" }
+  ],
+  "triggerCount": 1
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeniva.travel/schemas/asset.schema.json",
+  "title": "Asset",
+  "description": "Schema for media assets (videos/photos) in Chakra9",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "Unique identifier (usually Google Drive file ID)"
+    },
+    "yacht_id": {
+      "type": "string",
+      "description": "Reference to parent yacht"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["video", "photo"],
+      "description": "Asset type"
+    },
+    "filename": {
+      "type": "string",
+      "description": "Original filename"
+    },
+    "tag": {
+      "type": "string",
+      "enum": ["drone", "exterior", "interior", "amenity", "lifestyle", "crew", "sunset", "ocean", "toys", "untagged"],
+      "description": "Content category tag"
+    },
+    "tags_auto": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "AI-generated tags"
+    },
+    "duration_sec": {
+      "type": ["number", "null"],
+      "description": "Duration in seconds (for videos)"
+    },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "is_vertical": {
+      "type": "boolean",
+      "description": "True if aspect ratio is vertical (9:16)"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Direct URL to asset"
+    },
+    "thumbnail_url": {
+      "type": ["string", "null"],
+      "format": "uri"
+    },
+    "quality_score": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "AI-assessed quality score"
+    },
+    "usable_for_clips": {
+      "type": "boolean",
+      "default": true,
+      "description": "Flag for clip-worthy content"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["asset_id", "yacht_id", "type"]
+}

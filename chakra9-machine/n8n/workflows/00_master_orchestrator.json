@@ -1,0 +1,347 @@
+{
+  "name": "Chakra9 - 00 Master Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "morning-trigger",
+      "name": "Daily Morning Run (6 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "run-chakra9",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "manual-trigger",
+      "name": "Manual Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 200],
+      "webhookId": "run-chakra9"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "run_id",
+              "value": "={{ 'run_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) }}"
+            },
+            {
+              "name": "started_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "is_manual",
+              "value": "={{ $node['Manual Trigger Webhook'] ? true : false }}"
+            }
+          ]
+        }
+      },
+      "id": "init-run",
+      "name": "Initialize Run",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 100]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "exec-fleet-sync",
+      "name": "Execute: Fleet Sync YCN",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [440, 0],
+      "notes": "Set workflowId to your Fleet Sync workflow ID"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "exec-media-resolver",
+      "name": "Execute: Media Resolver",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [660, 0],
+      "notes": "Set workflowId to your Media Resolver workflow ID"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "YACHTS" },
+        "filterByFormula": "AND({status} = 'active', {drive_folder_id} != '')",
+        "options": {}
+      },
+      "id": "get-ready-yachts",
+      "name": "Get Yachts Ready for Content",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch-yachts",
+      "name": "Process One Yacht at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if yacht needs new content\nconst yacht = $input.first().json;\n\n// Logic: Generate new content if:\n// 1. Never generated before\n// 2. Last generation > 7 days ago\n// 3. Yacht data updated since last generation\n\nconst lastGenerated = yacht.last_content_generated_at;\nconst yachtUpdated = yacht.updated_at;\n\nlet needsContent = false;\nlet reason = '';\n\nif (!lastGenerated) {\n  needsContent = true;\n  reason = 'Never generated';\n} else {\n  const daysSinceGen = (Date.now() - new Date(lastGenerated).getTime()) / (1000 * 60 * 60 * 24);\n  if (daysSinceGen > 7) {\n    needsContent = true;\n    reason = `${Math.floor(daysSinceGen)} days since last generation`;\n  } else if (yachtUpdated && new Date(yachtUpdated) > new Date(lastGenerated)) {\n    needsContent = true;\n    reason = 'Yacht data updated';\n  }\n}\n\nreturn [{\n  json: {\n    yacht_id: yacht.yacht_id,\n    yacht_record_id: yacht.id,\n    needsContent,\n    reason,\n    yacht\n  }\n}];"
+      },
+      "id": "check-needs-content",
+      "name": "Check If Needs Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "needs-content",
+              "operator": { "type": "boolean", "operation": "true" },
+              "leftValue": "={{ $json.needsContent }}",
+              "rightValue": ""
+            }
+          ]
+        }
+      },
+      "id": "if-needs-content",
+      "name": "IF Needs Content",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{ $json.yacht_id }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "exec-chakra-engine",
+      "name": "Execute: Chakra Engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1760, -100],
+      "notes": "Set workflowId to your Chakra Engine workflow ID"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "YACHTS" },
+        "id": "={{ $json.yacht_record_id }}",
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              {
+                "column": "last_content_generated_at",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-last-generated",
+      "name": "Update Last Generated",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1980, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect run summary\nconst initData = $('Initialize Run').first().json;\nconst yachtsProcessed = $('Process One Yacht at a Time').all().length;\nconst contentGenerated = $('Execute: Chakra Engine').all().length;\n\nreturn [{\n  json: {\n    run_id: initData.run_id,\n    started_at: initData.started_at,\n    completed_at: new Date().toISOString(),\n    yachts_checked: yachtsProcessed,\n    content_generated: contentGenerated,\n    status: 'completed'\n  }\n}];"
+      },
+      "id": "run-summary",
+      "name": "Create Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "channel": "#content-machine",
+        "text": "=:robot_face: *Chakra9 Run Complete*\n\n*Run ID:* {{ $json.run_id }}\n*Duration:* {{ Math.round((new Date($json.completed_at) - new Date($json.started_at)) / 1000) }}s\n*Yachts Checked:* {{ $json.yachts_checked }}\n*Content Generated:* {{ $json.content_generated }}",
+        "otherOptions": {}
+      },
+      "id": "slack-summary",
+      "name": "Slack: Run Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2420, 0],
+      "credentials": {
+        "slackApi": { "id": "", "name": "Slack" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2420, 200]
+    },
+    {
+      "parameters": {
+        "content": "## Master Orchestrator (Chakra 0)\n\n### Daily Flow:\n1. 6 AM trigger (or manual webhook)\n2. Run Fleet Sync (update yacht list)\n3. Run Media Resolver (get Drive folder IDs)\n4. For each active yacht with assets:\n   - Check if needs new content\n   - If yes: run Chakra Engine\n5. Report summary to Slack\n\n### Setup:\n1. Set workflow IDs for each sub-workflow\n2. Configure Airtable/Sheets credentials\n3. Set up Slack webhook\n\n### Manual Trigger:\nPOST /webhook/run-chakra9\n{ \"force\": true }  // Optional: force regeneration",
+        "height": 340,
+        "width": 400
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-300, -120]
+    }
+  ],
+  "connections": {
+    "Daily Morning Run (6 AM)": {
+      "main": [
+        [
+          { "node": "Initialize Run", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Manual Trigger Webhook": {
+      "main": [
+        [
+          { "node": "Initialize Run", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Initialize Run": {
+      "main": [
+        [
+          { "node": "Execute: Fleet Sync YCN", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Execute: Fleet Sync YCN": {
+      "main": [
+        [
+          { "node": "Execute: Media Resolver", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Execute: Media Resolver": {
+      "main": [
+        [
+          { "node": "Get Yachts Ready for Content", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Yachts Ready for Content": {
+      "main": [
+        [
+          { "node": "Process One Yacht at a Time", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Process One Yacht at a Time": {
+      "main": [
+        [
+          { "node": "Check If Needs Content", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Create Run Summary", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check If Needs Content": {
+      "main": [
+        [
+          { "node": "IF Needs Content", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Needs Content": {
+      "main": [
+        [
+          { "node": "Execute: Chakra Engine", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Process One Yacht at a Time", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Execute: Chakra Engine": {
+      "main": [
+        [
+          { "node": "Update Last Generated", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update Last Generated": {
+      "main": [
+        [
+          { "node": "Process One Yacht at a Time", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Run Summary": {
+      "main": [
+        [
+          { "node": "Slack: Run Summary", "type": "main", "index": 0 },
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "master" },
+    { "name": "orchestrator" }
+  ],
+  "triggerCount": 2
+}

@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zeniva.travel/schemas/content_piece.schema.json",
+  "title": "ContentPiece",
+  "description": "Schema for generated content pieces in Chakra9",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "content_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique content piece ID"
+    },
+    "yacht_id": {
+      "type": "string",
+      "description": "Reference to parent yacht"
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["tiktok", "ig_reels", "facebook", "youtube_shorts"],
+      "description": "Target platform"
+    },
+    "angle": {
+      "type": "string",
+      "description": "Creative angle (e.g., 'Luxury escape', 'Bachelor bash')"
+    },
+    "hook": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "Opening hook (<=8 words ideal)"
+    },
+    "script": {
+      "type": "string",
+      "description": "Full voiceover script"
+    },
+    "on_screen_text": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Text overlays for each scene"
+    },
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "start_sec": { "type": "number" },
+          "end_sec": { "type": "number" },
+          "position": { "type": "string", "enum": ["top", "center", "bottom"] },
+          "style": { "type": "string" }
+        }
+      },
+      "description": "Timed text overlays"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Platform caption/description"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Hashtags for the post"
+    },
+    "cta": {
+      "type": "string",
+      "description": "Call to action (e.g., 'DM YACHT for availability')"
+    },
+    "cta_keyword": {
+      "type": "string",
+      "description": "DM trigger keyword"
+    },
+    "clip_plan": {
+      "type": "object",
+      "properties": {
+        "source_asset_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset_id": { "type": "string" },
+              "start_sec": { "type": "number" },
+              "end_sec": { "type": "number" },
+              "purpose": { "type": "string" }
+            }
+          }
+        },
+        "total_duration_sec": { "type": "number" }
+      },
+      "description": "Clip cutting instructions"
+    },
+    "output_files": {
+      "type": "object",
+      "properties": {
+        "video_url": { "type": "string", "format": "uri" },
+        "srt_url": { "type": "string", "format": "uri" },
+        "thumbnail_url": { "type": "string", "format": "uri" }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "pending_review", "approved", "scheduled", "posted", "archived"],
+      "default": "draft"
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "views": { "type": "integer" },
+        "likes": { "type": "integer" },
+        "shares": { "type": "integer" },
+        "comments": { "type": "integer" },
+        "saves": { "type": "integer" },
+        "watch_time_avg_sec": { "type": "number" },
+        "ctr": { "type": "number" }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "posted_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+  "required": ["content_id", "yacht_id", "platform", "hook", "caption", "cta", "status"]
+}

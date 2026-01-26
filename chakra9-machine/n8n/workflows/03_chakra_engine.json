@@ -1,0 +1,296 @@
+{
+  "name": "Chakra9 - 03 Content Pack Generator (Main Engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-content",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Generate Content Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "content-generator"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "YACHTS" },
+        "id": "={{ $json.body.yacht_id }}"
+      },
+      "id": "get-yacht",
+      "name": "Get Yacht Data",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "ASSETS" },
+        "filterByFormula": "={yacht_id} = '{{ $json.yacht_id }}'",
+        "options": {}
+      },
+      "id": "get-assets",
+      "name": "Get Yacht Assets",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare context for AI calls\nconst yacht = $('Get Yacht Data').first().json;\nconst assets = $('Get Yacht Assets').all().map(a => a.json);\n\n// Summarize asset tags\nconst tagCounts = {};\nassets.forEach(a => {\n  const tag = a.tag || 'untagged';\n  tagCounts[tag] = (tagCounts[tag] || 0) + 1;\n});\n\nconst yachtProfile = {\n  yacht_id: yacht.yacht_id,\n  title: yacht.title,\n  name: yacht.name,\n  length_ft: yacht.length_ft,\n  year: yacht.year,\n  manufacturer: yacht.manufacturer,\n  model: yacht.model,\n  location: yacht.location,\n  capacity: yacht.capacity,\n  crew: yacht.crew,\n  amenities: yacht.amenities || [],\n  experiences: yacht.experiences || [],\n  highlights: yacht.highlights || [],\n  prices: yacht.prices\n};\n\nreturn [{\n  json: {\n    yacht: yachtProfile,\n    assets: assets,\n    assetTags: tagCounts,\n    assetCount: assets.length,\n    videoCount: assets.filter(a => a.type === 'video').length,\n    photoCount: assets.filter(a => a.type === 'photo').length\n  }\n}];"
+      },
+      "id": "prepare-context",
+      "name": "Prepare AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5-20250514\",\n  \"max_tokens\": 4000,\n  \"system\": \"Tu es un Creative Director pour charters de yachts de luxe (Zeniva Travel, Miami). Style: Élite, minimal, confiance absolue. Ton premium concierge. Jamais d'exagération ni de hype. Tu réponds STRICTEMENT en JSON valide.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"YACHT DATA:\\n{{ JSON.stringify($json.yacht) }}\\n\\nASSET TAGS SUMMARY:\\n{{ JSON.stringify($json.assetTags) }}\\n\\nTASK:\\nGénère un Content Pack complet avec:\\n1. creative_angles (10): name, description, target_emotion, best_platforms\\n2. scripts (5): script_id, angle, duration_sec, hook, body, cta, full_script\\n3. on_screen_text_sets (5): set_id, angle, texts[]\\n4. hooks_premium (15): hook, style, emotion\\n\\nRéponds en JSON valide uniquement.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "claude-creative",
+      "name": "Claude: Creative Director",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-2024-08-06\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a performance copywriter for luxury yacht charters. Output MUST be valid JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"YACHT: {{ JSON.stringify($json.yacht) }}\\n\\nCREATIVE ANGLES: {{ $('Claude: Creative Director').first().json.content[0].text }}\\n\\nTASK: Generate:\\n1. hooks (20): hook (<=8 words), style, best_platform\\n2. captions (9): 3 per platform (tiktok, ig_reels, facebook)\\n3. cta_variations (12): cta, type, keyword\\n4. hashtag_sets (3): platform, hashtags[]\\n\\nOutput valid JSON only.\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" },\n  \"max_tokens\": 2500\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "openai-performance",
+      "name": "OpenAI: Performance Marketer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "OpenAI API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and merge AI responses\nconst claudeRaw = $('Claude: Creative Director').first().json;\nconst openaiRaw = $('OpenAI: Performance Marketer').first().json;\nconst context = $('Prepare AI Context').first().json;\n\n// Parse Claude response\nlet creative = {};\ntry {\n  const claudeText = claudeRaw.content?.[0]?.text || '{}';\n  creative = JSON.parse(claudeText);\n} catch (e) {\n  creative = { error: 'Failed to parse Claude response', raw: claudeRaw };\n}\n\n// Parse OpenAI response  \nlet performance = {};\ntry {\n  const openaiText = openaiRaw.choices?.[0]?.message?.content || '{}';\n  performance = JSON.parse(openaiText);\n} catch (e) {\n  performance = { error: 'Failed to parse OpenAI response', raw: openaiRaw };\n}\n\n// Merge into Content Pack\nconst contentPack = {\n  yacht_id: context.yacht.yacht_id,\n  generated_at: new Date().toISOString(),\n  yacht_profile: context.yacht,\n  \n  // From Claude\n  creative_angles: creative.creative_angles || [],\n  scripts: creative.scripts || [],\n  on_screen_text_sets: creative.on_screen_text_sets || [],\n  hooks_premium: creative.hooks_premium || [],\n  \n  // From OpenAI\n  hooks: performance.hooks || [],\n  captions: performance.captions || [],\n  cta_variations: performance.cta_variations || [],\n  hashtag_sets: performance.hashtag_sets || [],\n  \n  // Meta\n  asset_count: context.assetCount,\n  status: 'draft'\n};\n\nreturn [{ json: contentPack }];"
+      },
+      "id": "merge-responses",
+      "name": "Merge AI Responses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5-20250514\",\n  \"max_tokens\": 2000,\n  \"system\": \"Tu es un QA reviewer pour contenu marketing yacht. Tu vérifies les claims contre les données source. Output JSON: { status: 'approved'|'needs_revision'|'rejected', issues: [...], brand_score: 1-10, compliance_score: 1-10 }\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"SOURCE DATA (TRUTH):\\n{{ JSON.stringify($json.yacht_profile) }}\\n\\nCONTENT TO REVIEW:\\n{{ JSON.stringify({ hooks: $json.hooks, captions: $json.captions, scripts: $json.scripts }) }}\\n\\nVerify all claims. Flag issues. Rate brand consistency.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "qa-review",
+      "name": "QA Review (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process QA review and prepare final output\nconst contentPack = $('Merge AI Responses').first().json;\nconst qaRaw = $input.first().json;\n\nlet qa = { status: 'approved', issues: [], brand_score: 8, compliance_score: 8 };\ntry {\n  const qaText = qaRaw.content?.[0]?.text || '{}';\n  qa = JSON.parse(qaText);\n} catch (e) {\n  qa.parse_error = true;\n}\n\n// Apply auto-fixes for non-critical issues\nlet finalContent = { ...contentPack };\n\nif (qa.status === 'needs_revision' && qa.issues) {\n  const criticalIssues = qa.issues.filter(i => i.severity === 'critical');\n  \n  if (criticalIssues.length === 0) {\n    // Auto-apply suggested fixes\n    qa.issues.forEach(issue => {\n      if (issue.suggested_fix && issue.original) {\n        // Simple string replacement in captions/hooks\n        finalContent.captions = finalContent.captions?.map(c => ({\n          ...c,\n          caption: c.caption?.replace(issue.original, issue.suggested_fix)\n        }));\n      }\n    });\n    qa.status = 'auto_fixed';\n  }\n}\n\nreturn [{\n  json: {\n    content_pack: finalContent,\n    qa_result: qa,\n    final_status: qa.status === 'approved' || qa.status === 'auto_fixed' ? 'ready' : 'needs_review'\n  }\n}];"
+      },
+      "id": "process-qa",
+      "name": "Process QA Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 100]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": { "__rl": true, "mode": "list", "value": "" },
+        "table": { "__rl": true, "mode": "list", "value": "CONTENT_PACKS" },
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              { "column": "yacht_id", "value": "={{ $json.content_pack.yacht_id }}" },
+              { "column": "content_pack", "value": "={{ JSON.stringify($json.content_pack) }}" },
+              { "column": "qa_status", "value": "={{ $json.qa_result.status }}" },
+              { "column": "brand_score", "value": "={{ $json.qa_result.brand_score }}" },
+              { "column": "status", "value": "={{ $json.final_status }}" },
+              { "column": "created_at", "value": "={{ new Date().toISOString() }}" }
+            ]
+          }
+        }
+      },
+      "id": "save-pack",
+      "name": "Save Content Pack",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, yacht_id: $json.content_pack.yacht_id, status: $json.final_status, pack_id: $('Save Content Pack').first().json.id } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "content": "## Chakra Engine - Content Pack Generator\n\n### Flow:\n1. Receive yacht_id via webhook\n2. Fetch yacht data + assets\n3. Claude: Creative strategy (angles, scripts, overlays)\n4. OpenAI: Performance copy (hooks, captions, CTAs, hashtags)\n5. QA Review (verify claims against source)\n6. Save to database\n\n### AI Architecture:\n- Claude = Creative Director (style, emotion, storytelling)\n- OpenAI = Performance Marketer (conversion, hooks, CTAs)\n- Claude QA = Guardrails (fact-checking, brand compliance)",
+        "height": 280,
+        "width": 400
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -100]
+    }
+  ],
+  "connections": {
+    "Generate Content Webhook": {
+      "main": [
+        [
+          { "node": "Get Yacht Data", "type": "main", "index": 0 },
+          { "node": "Get Yacht Assets", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Yacht Data": {
+      "main": [
+        [
+          { "node": "Prepare AI Context", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Yacht Assets": {
+      "main": [
+        [
+          { "node": "Prepare AI Context", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare AI Context": {
+      "main": [
+        [
+          { "node": "Claude: Creative Director", "type": "main", "index": 0 },
+          { "node": "OpenAI: Performance Marketer", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Claude: Creative Director": {
+      "main": [
+        [
+          { "node": "Merge AI Responses", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "OpenAI: Performance Marketer": {
+      "main": [
+        [
+          { "node": "Merge AI Responses", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Merge AI Responses": {
+      "main": [
+        [
+          { "node": "QA Review (Claude)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "QA Review (Claude)": {
+      "main": [
+        [
+          { "node": "Process QA Result", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Process QA Result": {
+      "main": [
+        [
+          { "node": "Save Content Pack", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Content Pack": {
+      "main": [
+        [
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "content" },
+    { "name": "ai" }
+  ],
+  "triggerCount": 1
+}

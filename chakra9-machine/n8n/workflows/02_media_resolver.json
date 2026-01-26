@@ -1,0 +1,277 @@
+{
+  "name": "Chakra9 - 02 Media Resolver (Drive Folder ID)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resolve-media",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "media-resolver"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Check Pending (Every 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YACHTS"
+        },
+        "filterByFormula": "AND({drive_folder_id} = '', {status} = 'active')",
+        "options": {}
+      },
+      "id": "get-pending",
+      "name": "Get Yachts Without Drive ID",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare yacht for resolution\nconst yacht = $input.first().json;\n\nreturn [{\n  json: {\n    yacht_id: yacht.yacht_id || yacht.fields?.yacht_id,\n    media_url: yacht.media_url || yacht.fields?.media_url,\n    record_id: yacht.id // Airtable record ID for update\n  }\n}];"
+      },
+      "id": "prep-yacht",
+      "name": "Prepare Yacht Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $json.media_url }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "head-media-url",
+      "name": "HEAD Request to Media URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Google Drive folder ID from redirect\nconst response = $input.first().json;\nconst yacht = $('Prepare Yacht Data').first().json;\n\n// Get Location header (redirect URL)\nconst headers = response.headers || {};\nconst location = headers.location || headers.Location || '';\n\nlet result = {\n  yacht_id: yacht.yacht_id,\n  record_id: yacht.record_id,\n  media_url: yacht.media_url,\n  status_code: response.statusCode,\n  redirect_url: location,\n  drive_folder_id: null,\n  drive_folder_url: null,\n  resolved: false,\n  error: null\n};\n\nif (location) {\n  // Extract folder ID from Google Drive URL\n  // Patterns:\n  // https://drive.google.com/drive/folders/FOLDER_ID\n  // https://drive.google.com/drive/u/0/folders/FOLDER_ID\n  const folderMatch = location.match(/folders\\/([a-zA-Z0-9_-]+)/);\n  \n  if (folderMatch) {\n    result.drive_folder_id = folderMatch[1];\n    result.drive_folder_url = location;\n    result.resolved = true;\n  } else {\n    result.error = 'Redirect URL does not contain folder ID';\n  }\n} else if (response.statusCode === 404) {\n  result.error = 'Media URL not found (404)';\n} else {\n  result.error = `No redirect, status: ${response.statusCode}`;\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "extract-folder-id",
+      "name": "Extract Folder ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "resolved-check",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.resolved }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "if-resolved",
+      "name": "IF Resolved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YACHTS"
+        },
+        "id": "={{ $json.record_id }}",
+        "columns": {
+          "fieldMappingUi": {
+            "values": [
+              {
+                "column": "drive_folder_id",
+                "value": "={{ $json.drive_folder_id }}"
+              },
+              {
+                "column": "drive_folder_url",
+                "value": "={{ $json.drive_folder_url }}"
+              },
+              {
+                "column": "media_resolved_at",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        },
+        "options": {}
+      },
+      "id": "update-airtable",
+      "name": "Update Yacht with Folder ID",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1100, -100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "log_type",
+              "value": "media_resolution_failed"
+            },
+            {
+              "name": "yacht_id",
+              "value": "={{ $json.yacht_id }}"
+            },
+            {
+              "name": "error",
+              "value": "={{ $json.error }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-failure",
+      "name": "Log Resolution Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1100, 100]
+    },
+    {
+      "parameters": {
+        "content": "## Media Resolver (Chakra 3)\n\nResolves media.ycn.miami redirects to Google Drive folder IDs.\n\n### How it works:\n1. HEAD request to media_url (no redirect follow)\n2. Extract Location header\n3. Parse Google Drive folder ID\n4. Update database\n\n### Triggers:\n- Webhook: POST /resolve-media with yacht_id\n- Schedule: Every 6 hours (check pending)",
+        "height": 200,
+        "width": 320
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-250, -80]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          { "node": "Prepare Yacht Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check Pending (Every 6h)": {
+      "main": [
+        [
+          { "node": "Get Yachts Without Drive ID", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Yachts Without Drive ID": {
+      "main": [
+        [
+          { "node": "Prepare Yacht Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare Yacht Data": {
+      "main": [
+        [
+          { "node": "HEAD Request to Media URL", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HEAD Request to Media URL": {
+      "main": [
+        [
+          { "node": "Extract Folder ID", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Folder ID": {
+      "main": [
+        [
+          { "node": "IF Resolved", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Resolved": {
+      "main": [
+        [
+          { "node": "Update Yacht with Folder ID", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Log Resolution Failure", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "media" },
+    { "name": "drive" }
+  ],
+  "triggerCount": 2
+}
