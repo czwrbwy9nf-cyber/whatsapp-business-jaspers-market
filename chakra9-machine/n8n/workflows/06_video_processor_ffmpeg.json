@@ -1,0 +1,205 @@
+{
+  "name": "Chakra9 - 06 Video Processor (FFmpeg Self-Hosted)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-video",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Process Video Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "process-video"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare video processing job\nconst input = $input.first().json.body || $input.first().json;\n\nconst job = {\n  job_id: `job_${Date.now()}`,\n  yacht_id: input.yacht_id,\n  source_file_id: input.source_file_id,\n  source_url: input.source_url,\n  clips: input.clips || [],\n  output_format: input.output_format || 'mp4',\n  vertical: input.vertical !== false,\n  burn_subtitles: input.burn_subtitles || false,\n  srt_content: input.srt_content || null,\n  overlays: input.overlays || [],\n  output_dir: `/data/chakra9/outputs/${input.yacht_id}/${Date.now()}`,\n  temp_dir: `/tmp/chakra9/${Date.now()}`,\n  created_at: new Date().toISOString()\n};\n\nreturn [{ json: job }];"
+      },
+      "id": "prep-job",
+      "name": "Prepare Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p {{ $json.output_dir }} {{ $json.temp_dir }}"
+      },
+      "id": "create-dirs",
+      "name": "Create Directories",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Prepare Job').first().json.source_file_id }}"
+        },
+        "options": {}
+      },
+      "id": "download-source",
+      "name": "Download Source from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [660, 0],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "", "name": "Google Drive" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Prepare Job').first().json.temp_dir }}/source.mp4",
+        "options": {}
+      },
+      "id": "save-source",
+      "name": "Save Source File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "command": "=ffprobe -v quiet -print_format json -show_format -show_streams {{ $('Prepare Job').first().json.temp_dir }}/source.mp4"
+      },
+      "id": "probe-video",
+      "name": "FFprobe: Get Video Info",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse video info and prepare clip commands\nconst job = $('Prepare Job').first().json;\nconst probeRaw = $input.first().json.stdout;\n\nlet videoInfo = {};\ntry {\n  videoInfo = JSON.parse(probeRaw);\n} catch (e) {\n  videoInfo = { error: 'Could not parse ffprobe output' };\n}\n\nconst duration = parseFloat(videoInfo.format?.duration) || 0;\nconst videoStream = videoInfo.streams?.find(s => s.codec_type === 'video') || {};\nconst width = videoStream.width || 1920;\nconst height = videoStream.height || 1080;\nconst isVertical = height > width;\n\n// Generate FFmpeg commands for each clip\nconst clipCommands = job.clips.map((clip, idx) => {\n  const clipNum = String(idx + 1).padStart(2, '0');\n  const outputFile = `${job.output_dir}/clip_${clipNum}.mp4`;\n  \n  // Base FFmpeg command\n  let cmd = `ffmpeg -y -i ${job.temp_dir}/source.mp4`;\n  \n  // Time range\n  cmd += ` -ss ${clip.start_sec} -to ${clip.end_sec}`;\n  \n  // Video filters\n  const filters = [];\n  \n  // Crop to vertical (9:16) if needed and requested\n  if (job.vertical && !isVertical) {\n    const cropWidth = Math.floor(height * 9 / 16);\n    const cropX = Math.floor((width - cropWidth) / 2);\n    filters.push(`crop=${cropWidth}:${height}:${cropX}:0`);\n    filters.push('scale=1080:1920');\n  } else if (job.vertical) {\n    filters.push('scale=1080:1920:force_original_aspect_ratio=decrease');\n    filters.push('pad=1080:1920:(ow-iw)/2:(oh-ih)/2');\n  }\n  \n  // Add text overlays\n  if (clip.overlays && clip.overlays.length > 0) {\n    clip.overlays.forEach((overlay, oi) => {\n      const text = overlay.text.replace(/'/g, \"\\\\'\");\n      const fontsize = overlay.style === 'bold' ? 72 : 56;\n      const yPos = overlay.position === 'top' ? 100 : (overlay.position === 'bottom' ? 'h-th-100' : '(h-th)/2');\n      filters.push(`drawtext=text='${text}':fontsize=${fontsize}:fontcolor=white:borderw=3:bordercolor=black:x=(w-tw)/2:y=${yPos}`);\n    });\n  }\n  \n  if (filters.length > 0) {\n    cmd += ` -vf \"${filters.join(',')}\"`;\n  }\n  \n  // Output settings\n  cmd += ` -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k`;\n  cmd += ` ${outputFile}`;\n  \n  return {\n    clip_id: clip.clip_id || `clip_${clipNum}`,\n    clip_num: clipNum,\n    command: cmd,\n    output_file: outputFile,\n    start_sec: clip.start_sec,\n    end_sec: clip.end_sec,\n    duration_sec: clip.end_sec - clip.start_sec\n  };\n});\n\nreturn [{\n  json: {\n    job,\n    videoInfo: {\n      duration,\n      width,\n      height,\n      isVertical\n    },\n    clipCommands\n  }\n}];"
+      },
+      "id": "prep-ffmpeg",
+      "name": "Prepare FFmpeg Commands",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-clips",
+      "name": "Split Clips",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "run-ffmpeg",
+      "name": "FFmpeg: Cut Clip",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all processed clips\nconst job = $('Prepare Job').first().json;\nconst clipResults = $('FFmpeg: Cut Clip').all();\nconst clipCommands = $('Prepare FFmpeg Commands').first().json.clipCommands;\n\nconst results = clipCommands.map((cmd, idx) => {\n  const result = clipResults[idx]?.json || {};\n  return {\n    clip_id: cmd.clip_id,\n    output_file: cmd.output_file,\n    duration_sec: cmd.duration_sec,\n    success: result.exitCode === 0 || !result.stderr?.includes('Error'),\n    error: result.stderr?.includes('Error') ? result.stderr : null\n  };\n});\n\nconst successCount = results.filter(r => r.success).length;\n\nreturn [{\n  json: {\n    job_id: job.job_id,\n    yacht_id: job.yacht_id,\n    output_dir: job.output_dir,\n    total_clips: results.length,\n    success_count: successCount,\n    failed_count: results.length - successCount,\n    clips: results,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "collect-results",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "command": "=rm -rf {{ $('Prepare Job').first().json.temp_dir }}"
+      },
+      "id": "cleanup-temp",
+      "name": "Cleanup Temp Files",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Collect Results').first().json }}"
+      },
+      "id": "respond",
+      "name": "Respond with Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Video Processor (FFmpeg Self-Hosted)\n\n### Requires:\n- FFmpeg installed in n8n container\n- Sufficient disk space for temp files\n- Write access to /data/chakra9/outputs\n\n### Input (POST /process-video):\n```json\n{\n  \"yacht_id\": \"spysea\",\n  \"source_file_id\": \"drive_file_id\",\n  \"clips\": [\n    { \"clip_id\": \"01\", \"start_sec\": 0, \"end_sec\": 30 }\n  ],\n  \"vertical\": true,\n  \"overlays\": [\n    { \"text\": \"Hook text\", \"style\": \"bold\" }\n  ]\n}\n```\n\n### Output:\n- Vertical MP4 clips (1080x1920)\n- Text overlays burned in\n- Files in /data/chakra9/outputs/{yacht_id}/",
+        "height": 400,
+        "width": 380
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -120]
+    }
+  ],
+  "connections": {
+    "Process Video Webhook": {
+      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+    },
+    "Prepare Job": {
+      "main": [[{ "node": "Create Directories", "type": "main", "index": 0 }]]
+    },
+    "Create Directories": {
+      "main": [[{ "node": "Download Source from Drive", "type": "main", "index": 0 }]]
+    },
+    "Download Source from Drive": {
+      "main": [[{ "node": "Save Source File", "type": "main", "index": 0 }]]
+    },
+    "Save Source File": {
+      "main": [[{ "node": "FFprobe: Get Video Info", "type": "main", "index": 0 }]]
+    },
+    "FFprobe: Get Video Info": {
+      "main": [[{ "node": "Prepare FFmpeg Commands", "type": "main", "index": 0 }]]
+    },
+    "Prepare FFmpeg Commands": {
+      "main": [[{ "node": "Split Clips", "type": "main", "index": 0 }]]
+    },
+    "Split Clips": {
+      "main": [
+        [{ "node": "FFmpeg: Cut Clip", "type": "main", "index": 0 }],
+        [{ "node": "Collect Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "FFmpeg: Cut Clip": {
+      "main": [[{ "node": "Split Clips", "type": "main", "index": 0 }]]
+    },
+    "Collect Results": {
+      "main": [[{ "node": "Cleanup Temp Files", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Temp Files": {
+      "main": [[{ "node": "Respond with Results", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "ffmpeg" },
+    { "name": "video" },
+    { "name": "self-hosted" }
+  ]
+}

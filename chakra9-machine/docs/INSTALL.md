@@ -2,14 +2,51 @@
 
 ## Prerequisites
 
-- n8n (self-hosted or cloud)
-- Node.js 18+ (for Video Factory worker)
-- FFmpeg (for video processing)
+- n8n (self-hosted recommended for full auto)
+- Docker & Docker Compose (for self-hosted)
 - API Keys:
   - OpenAI API Key
   - Anthropic (Claude) API Key
   - Google Drive API credentials
 - Database: Airtable OR Google Sheets
+
+---
+
+## Quick Start (Self-Hosted with Docker)
+
+### 1. Clone and Configure
+
+```bash
+cd chakra9-machine
+
+# Copy environment template
+cp .env.example .env
+
+# Edit with your values
+nano .env
+```
+
+### 2. Start the Stack
+
+```bash
+# Start n8n with FFmpeg + PostgreSQL + Redis
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f n8n
+```
+
+### 3. Access n8n
+
+Open http://localhost:5678 (or your configured host)
+Default credentials: admin / changeme (change these!)
+
+### 4. Import Workflows
+
+Follow Step 3 below to import workflows.
 
 ---
 
@@ -159,34 +196,62 @@ After importing all workflows:
 
 ---
 
-## Step 4: Video Factory Worker (Optional)
+## Step 4: Video Processing (Self-Hosted)
 
-For automated video processing:
+### Option A: FFmpeg Direct in n8n (Recommended)
 
-### Local Development
+Since you're self-hosted, use the Execute Command nodes with FFmpeg:
+
+1. Import `06_video_processor_ffmpeg.json`
+2. Import `07_subtitle_generator.json`
+3. These workflows use FFmpeg directly - no external worker needed!
+
+**Test FFmpeg in your n8n container:**
 
 ```bash
-cd chakra9-machine/worker
+docker exec -it chakra9-machine-n8n-1 ffmpeg -version
+docker exec -it chakra9-machine-n8n-1 ffprobe -version
+```
+
+### Workflow Endpoints (Self-Hosted):
+
+| Endpoint | Purpose |
+|----------|---------|
+| POST `/webhook/process-video` | Cut clips from source video |
+| POST `/webhook/generate-subtitles` | Whisper transcription → SRT |
+
+### Example: Cut Clips
+
+```bash
+curl -X POST http://localhost:5678/webhook/process-video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "yacht_id": "spysea",
+    "source_file_id": "GOOGLE_DRIVE_FILE_ID",
+    "vertical": true,
+    "clips": [
+      { "clip_id": "hook", "start_sec": 0, "end_sec": 3 },
+      { "clip_id": "main", "start_sec": 10, "end_sec": 45 }
+    ],
+    "overlays": [
+      { "text": "Starting at $3,500", "style": "bold", "position": "bottom" }
+    ]
+  }'
+```
+
+### Option B: Standalone Video Factory Worker
+
+For heavy workloads, run the worker separately:
+
+```bash
+# Include video-factory service
+docker-compose --profile with-api up -d
+
+# Or run standalone
+cd worker
 npm install
-cp .env.example .env
 npm run dev
 ```
-
-### Docker Deployment
-
-```bash
-cd chakra9-machine/worker
-docker build -t chakra9-video-factory .
-docker run -d -p 3000:3000 --name video-factory chakra9-video-factory
-```
-
-### n8n Integration
-
-Add HTTP Request nodes to call Video Factory endpoints:
-
-- `POST http://your-worker:3000/cut-clips`
-- `POST http://your-worker:3000/burn-subtitles`
-- `POST http://your-worker:3000/process-clip-pack`
 
 ---
 

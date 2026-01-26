@@ -1,0 +1,165 @@
+{
+  "name": "Chakra9 - 07 Subtitle Generator (Whisper + SRT)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-subtitles",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Generate Subtitles Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "generate-subtitles"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    job_id: `srt_${Date.now()}`,\n    video_file: input.video_file,\n    source_file_id: input.source_file_id,\n    language: input.language || 'en',\n    output_dir: input.output_dir || `/data/chakra9/subtitles`,\n    temp_dir: `/tmp/chakra9/srt_${Date.now()}`\n  }\n}];"
+      },
+      "id": "prep-job",
+      "name": "Prepare Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p {{ $json.output_dir }} {{ $json.temp_dir }}"
+      },
+      "id": "create-dirs",
+      "name": "Create Directories",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -i {{ $('Prepare Job').first().json.video_file }} -vn -acodec pcm_s16le -ar 16000 -ac 1 {{ $('Prepare Job').first().json.temp_dir }}/audio.wav",
+        "options": { "timeout": 120000 }
+      },
+      "id": "extract-audio",
+      "name": "FFmpeg: Extract Audio",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "={{ $('Prepare Job').first().json.temp_dir }}/audio.wav",
+        "options": {}
+      },
+      "id": "read-audio",
+      "name": "Read Audio File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "model", "value": "whisper-1" },
+            { "name": "response_format", "value": "verbose_json" },
+            { "name": "timestamp_granularities[]", "value": "segment" },
+            { "name": "language", "value": "={{ $('Prepare Job').first().json.language }}" }
+          ]
+        },
+        "sendBinaryData": true,
+        "binaryPropertyName": "data",
+        "options": { "timeout": 180000 }
+      },
+      "id": "whisper-api",
+      "name": "OpenAI Whisper Transcription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": { "id": "", "name": "OpenAI API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert Whisper response to SRT format\nconst job = $('Prepare Job').first().json;\nconst whisperResponse = $input.first().json;\n\nconst segments = whisperResponse.segments || [];\n\nfunction formatTime(seconds) {\n  const hours = Math.floor(seconds / 3600);\n  const mins = Math.floor((seconds % 3600) / 60);\n  const secs = Math.floor(seconds % 60);\n  const ms = Math.floor((seconds % 1) * 1000);\n  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(ms).padStart(3, '0')}`;\n}\n\nconst srtLines = segments.map((seg, idx) => {\n  const num = idx + 1;\n  const start = formatTime(seg.start);\n  const end = formatTime(seg.end);\n  const text = seg.text.trim();\n  return `${num}\\n${start} --> ${end}\\n${text}\\n`;\n});\n\nconst srtContent = srtLines.join('\\n');\n\n// Also create VTT format\nconst vttLines = segments.map(seg => {\n  const start = formatTime(seg.start).replace(',', '.');\n  const end = formatTime(seg.end).replace(',', '.');\n  return `${start} --> ${end}\\n${seg.text.trim()}\\n`;\n});\nconst vttContent = `WEBVTT\\n\\n${vttLines.join('\\n')}`;\n\nreturn [{\n  json: {\n    job_id: job.job_id,\n    srt_content: srtContent,\n    vtt_content: vttContent,\n    segments: segments.map(s => ({\n      start: s.start,\n      end: s.end,\n      text: s.text.trim(),\n      duration: s.end - s.start\n    })),\n    full_text: whisperResponse.text || segments.map(s => s.text).join(' '),\n    language: whisperResponse.language || job.language,\n    duration: whisperResponse.duration || (segments.length ? segments[segments.length - 1].end : 0)\n  }\n}];"
+      },
+      "id": "convert-srt",
+      "name": "Convert to SRT/VTT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "command": "=echo '{{ $json.srt_content.replace(/'/g, \"'\\''\") }}' > {{ $('Prepare Job').first().json.output_dir }}/subtitles.srt && echo '{{ $json.vtt_content.replace(/'/g, \"'\\''\") }}' > {{ $('Prepare Job').first().json.output_dir }}/subtitles.vtt"
+      },
+      "id": "save-files",
+      "name": "Save SRT/VTT Files",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "command": "=rm -rf {{ $('Prepare Job').first().json.temp_dir }}"
+      },
+      "id": "cleanup",
+      "name": "Cleanup Temp",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Subtitle Generator (Whisper + SRT)\n\n### Flow:\n1. Extract audio from video (FFmpeg)\n2. Send to OpenAI Whisper API\n3. Convert response to SRT/VTT\n4. Save files\n\n### Input:\n```json\n{\n  \"video_file\": \"/path/to/video.mp4\",\n  \"language\": \"en\"\n}\n```\n\n### Output:\n- subtitles.srt\n- subtitles.vtt\n- Timestamped segments JSON\n\n### Cost:\n~$0.006/minute of audio",
+        "height": 300,
+        "width": 320
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -80]
+    }
+  ],
+  "connections": {
+    "Generate Subtitles Webhook": {
+      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+    },
+    "Prepare Job": {
+      "main": [[{ "node": "Create Directories", "type": "main", "index": 0 }]]
+    },
+    "Create Directories": {
+      "main": [[{ "node": "FFmpeg: Extract Audio", "type": "main", "index": 0 }]]
+    },
+    "FFmpeg: Extract Audio": {
+      "main": [[{ "node": "Read Audio File", "type": "main", "index": 0 }]]
+    },
+    "Read Audio File": {
+      "main": [[{ "node": "OpenAI Whisper Transcription", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Whisper Transcription": {
+      "main": [[{ "node": "Convert to SRT/VTT", "type": "main", "index": 0 }]]
+    },
+    "Convert to SRT/VTT": {
+      "main": [[{ "node": "Save SRT/VTT Files", "type": "main", "index": 0 }]]
+    },
+    "Save SRT/VTT Files": {
+      "main": [[{ "node": "Cleanup Temp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [
+    { "name": "chakra9" },
+    { "name": "subtitles" },
+    { "name": "whisper" },
+    { "name": "self-hosted" }
+  ]
+}

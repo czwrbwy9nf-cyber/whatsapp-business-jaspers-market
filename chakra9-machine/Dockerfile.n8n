@@ -1,0 +1,44 @@
+# n8n with FFmpeg for Chakra9 Content Machine
+# Self-hosted video processing capabilities
+
+FROM n8nio/n8n:latest
+
+USER root
+
+# Install FFmpeg and dependencies
+RUN apk add --no-cache \
+    ffmpeg \
+    ffmpeg-libs \
+    python3 \
+    py3-pip \
+    curl \
+    jq \
+    imagemagick \
+    fontconfig \
+    ttf-dejavu \
+    ttf-liberation \
+    && rm -rf /var/cache/apk/*
+
+# Create data directories
+RUN mkdir -p /data/chakra9/outputs \
+    /data/chakra9/subtitles \
+    /data/chakra9/temp \
+    /data/hooks \
+    && chown -R node:node /data
+
+# Install additional fonts for video overlays
+RUN mkdir -p /usr/share/fonts/custom
+COPY fonts/ /usr/share/fonts/custom/ 2>/dev/null || true
+RUN fc-cache -f -v
+
+# Switch back to node user
+USER node
+
+# Verify FFmpeg installation
+RUN ffmpeg -version && ffprobe -version
+
+WORKDIR /home/node
+
+EXPOSE 5678
+
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
