@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeniva Travel — AI Travel Concierge</title>
+  <meta name="description" content="Plan your dream trip in 60 seconds with Lina, your AI travel concierge. Flights, hotels, yachts & more. No fees, no hassle.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TravelAgency",
+    "name": "Zeniva Travel",
+    "description": "AI-powered travel concierge service",
+    "url": "https://zenivatravel.com",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Wilmington",
+      "addressRegion": "DE",
+      "addressCountry": "US"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.9",
+      "reviewCount": "47"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-avatar">
+          <span class="logo-letter">Z</span>
+        </div>
+        <span class="logo-text">Zeniva Travel</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-login">Log in</button>
+        <button class="btn-signup">Sign up</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MOBILE HERO -->
+  <section class="mobile-hero">
+    <div class="mobile-hero-inner">
+      <h1 class="mobile-hero-title">Your dream trip, planned in 60 sec</h1>
+      <p class="mobile-hero-desc">Tell Lina where you want to go — she handles flights, hotels &amp; experiences instantly. No fees, no hassle.</p>
+
+      <div class="lina-avatar-container">
+        <div class="lina-avatar-pulse"></div>
+        <div class="lina-avatar">
+          <span class="lina-letter">L</span>
+        </div>
+        <span class="lina-status-badge">
+          <span class="pulse-dot"></span> Online
+        </span>
+      </div>
+
+      <a href="#" class="btn-primary btn-gradient">🎁 Claim my 15% discount</a>
+      <span class="btn-sub-text">Free · Instant · No credit card</span>
+
+      <a href="#" class="btn-secondary-white">Talk to Lina — Right Now</a>
+      <span class="btn-sub-text">Live AI agent · Answers in seconds · Free</span>
+
+      <div class="trust-badge-mobile">✅ 500+ trips planned this month · Trusted by travelers worldwide</div>
+    </div>
+  </section>
+
+  <!-- SERVICE PILLS -->
+  <section class="service-pills-section">
+    <div class="container">
+      <div class="service-pills">
+        <a href="#" class="pill">🏡 ZeniStay</a>
+        <a href="#" class="pill">🏨 ZeniHotel</a>
+        <a href="#" class="pill">✈️ ZeniFlights</a>
+        <a href="#" class="pill">🛥️ ZeniYacht</a>
+        <a href="#" class="pill">🚢 ZeniCruise</a>
+        <a href="#" class="pill">🚗 ZeniCar</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS SECTION -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-value">200+</span>
+          <span class="stat-label">Destinations</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">24/7</span>
+          <span class="stat-label">AI Concierge</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">4.9★</span>
+          <span class="stat-label">Client Rating</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">$0</span>
+          <span class="stat-label">Booking Fees</span>
+        </div>
+      </div>
+      <p class="stats-note">🔒 Secure · No booking fees · Cancel anytime</p>
+    </div>
+  </section>
+
+  <!-- TOP DESTINATIONS -->
+  <section class="destinations-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Top Destinations</h2>
+        <a href="#" class="view-all">View All →</a>
+      </div>
+      <div class="destinations-scroll">
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <span class="dest-tag">Romantic</span>
+          </div>
+          <div class="dest-info">
+            <h3>Santorini</h3>
+            <span class="dest-country">Greece</span>
+          </div>
+        </div>
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <span class="dest-tag">Adventure</span>
+          </div>
+          <div class="dest-info">
+            <h3>Bali</h3>
+            <span class="dest-country">Indonesia</span>
+          </div>
+        </div>
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <span class="dest-tag">Luxury</span>
+          </div>
+          <div class="dest-info">
+            <h3>Dubai</h3>
+            <span class="dest-country">UAE</span>
+          </div>
+        </div>
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <span class="dest-tag">Beach</span>
+          </div>
+          <div class="dest-info">
+            <h3>Cancún</h3>
+            <span class="dest-country">Mexico</span>
+          </div>
+        </div>
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <span class="dest-tag">Culture</span>
+          </div>
+          <div class="dest-info">
+            <h3>Tokyo</h3>
+            <span class="dest-country">Japan</span>
+          </div>
+        </div>
+        <div class="dest-card">
+          <div class="dest-img" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);">
+            <span class="dest-tag">Paradise</span>
+          </div>
+          <div class="dest-info">
+            <h3>Maldives</h3>
+            <span class="dest-country">Indian Ocean</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESKTOP HERO -->
+  <section class="desktop-hero">
+    <div class="desktop-hero-inner">
+      <div class="desktop-hero-left">
+        <div class="ai-badge">
+          <span class="pulse-dot"></span>
+          Lina AI · Available 24/7
+        </div>
+        <h1 class="desktop-hero-title">Zeniva Travel AI</h1>
+        <p class="desktop-hero-subtitle">Tell Lina where you want to go and she instantly builds your flights, hotels, and experiences.</p>
+        <p class="desktop-hero-tagline">Plan your entire trip in seconds with AI</p>
+        <div class="desktop-hero-buttons">
+          <a href="#" class="btn-primary btn-gradient">🎁 Claim my 15% discount</a>
+          <a href="#" class="btn-call">📞 Call Lina</a>
+        </div>
+        <span class="cta-note">Free to start • No account required • 15% off your first booking</span>
+      </div>
+      <div class="desktop-hero-right">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-avatar">
+              <span class="lina-letter-sm">L</span>
+            </div>
+            <div>
+              <strong>Lina</strong>
+              <div class="demo-status"><span class="pulse-dot-sm"></span> <span class="live-tag">LIVE</span></div>
+            </div>
+          </div>
+          <div class="demo-chat">
+            <div class="chat-bubble chat-lina">Hi! I'm Lina, your AI travel concierge. Where would you like to go? ✈️</div>
+            <div class="chat-bubble chat-user">I want a romantic getaway in Santorini for 5 days</div>
+            <div class="chat-bubble chat-lina">Perfect! I found a beautiful 5-day Santorini package for you. Flights, sunset-view hotel, and wine tours included! 🌅</div>
+          </div>
+          <div class="demo-input">
+            <input type="text" placeholder="Tell Lina your dream trip..." disabled>
+            <button class="demo-send">→</button>
+          </div>
+        </div>
+        <!-- Floating price cards -->
+        <div class="floating-card fc-1">
+          <span class="fc-dest">🇬🇷 Santorini</span>
+          <span class="fc-price">from $899</span>
+        </div>
+        <div class="floating-card fc-2">
+          <span class="fc-dest">🇮🇩 Bali</span>
+          <span class="fc-price">from $749</span>
+        </div>
+        <div class="floating-card fc-3">
+          <span class="fc-dest">🇦🇪 Dubai</span>
+          <span class="fc-price">from $1,099</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES GRID -->
+  <section class="features-section">
+    <div class="container">
+      <h2 class="section-title">Everything you need for the perfect trip</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">✈️</div>
+          <h3>ZeniFlights</h3>
+          <p>Best fares worldwide</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏨</div>
+          <h3>ZeniHotel</h3>
+          <p>Curated luxury stays</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛥️</div>
+          <h3>ZeniYacht</h3>
+          <p>Private charters</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚗</div>
+          <h3>ZeniTransfers</h3>
+          <p>Door-to-door service</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>ZeniPackages</h3>
+          <p>All-inclusive deals</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏡</div>
+          <h3>ZeniStay</h3>
+          <p>Homes &amp; villas</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURED TRIPS -->
+  <section class="featured-trips-section">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <span class="hot-deals-badge">🔥 Hot Deals</span>
+          <h2>Featured Trips by Lina</h2>
+        </div>
+        <a href="#" class="view-all">View all →</a>
+      </div>
+      <div class="trips-scroll">
+        <div class="trip-card">
+          <div class="trip-img" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <span class="trip-discount">-15%</span>
+          </div>
+          <div class="trip-info">
+            <h3>Santorini Romantic Escape</h3>
+            <p>5 days · Flights + Hotel + Tours</p>
+            <div class="trip-price">
+              <span class="price-old">$1,299</span>
+              <span class="price-new">$1,099</span>
+            </div>
+          </div>
+        </div>
+        <div class="trip-card">
+          <div class="trip-img" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <span class="trip-discount">-15%</span>
+          </div>
+          <div class="trip-info">
+            <h3>Bali Adventure Week</h3>
+            <p>7 days · Flights + Villa + Activities</p>
+            <div class="trip-price">
+              <span class="price-old">$1,599</span>
+              <span class="price-new">$1,359</span>
+            </div>
+          </div>
+        </div>
+        <div class="trip-card">
+          <div class="trip-img" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <span class="trip-discount">-15%</span>
+          </div>
+          <div class="trip-info">
+            <h3>Dubai Luxury Experience</h3>
+            <p>4 days · Flights + 5★ Hotel + Yacht</p>
+            <div class="trip-price">
+              <span class="price-old">$2,499</span>
+              <span class="price-new">$2,124</span>
+            </div>
+          </div>
+        </div>
+        <div class="trip-card">
+          <div class="trip-img" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <span class="trip-discount">-15%</span>
+          </div>
+          <div class="trip-info">
+            <h3>Cancún Beach Paradise</h3>
+            <p>6 days · All-inclusive Resort</p>
+            <div class="trip-price">
+              <span class="price-old">$1,899</span>
+              <span class="price-new">$1,614</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LINA AI SECTION -->
+  <section class="lina-section">
+    <div class="container">
+      <div class="lina-section-inner">
+        <div class="lina-section-left">
+          <div class="ai-tech-badge">
+            <span class="pulse-dot"></span> AI Technology
+          </div>
+          <h2>Meet Lina, Your AI Travel Concierge</h2>
+          <p>Lina is your AI travel concierge that plans your entire trip in seconds. She understands your destination, budget, and travel style to instantly create the perfect itinerary.</p>
+          <div class="lina-features">
+            <div class="lina-feature">
+              <span class="lina-feature-icon">🌍</span>
+              <div>
+                <strong>Speaks 40+ languages</strong>
+                <p>EN, FR, ES, AR and more</p>
+              </div>
+            </div>
+            <div class="lina-feature">
+              <span class="lina-feature-icon">⚡</span>
+              <div>
+                <strong>Instant proposals</strong>
+                <p>Full trip in under 30 seconds</p>
+              </div>
+            </div>
+            <div class="lina-feature">
+              <span class="lina-feature-icon">💰</span>
+              <div>
+                <strong>Best price guarantee</strong>
+                <p>We always find the best deals</p>
+              </div>
+            </div>
+            <div class="lina-feature">
+              <span class="lina-feature-icon">🔄</span>
+              <div>
+                <strong>Unlimited revisions</strong>
+                <p>Adjust until it's perfect</p>
+              </div>
+            </div>
+          </div>
+          <div class="lina-section-buttons">
+            <a href="#" class="btn-primary btn-white">Build my trip with Lina</a>
+            <a href="#" class="btn-call-light">📞 Call Lina</a>
+          </div>
+        </div>
+        <div class="lina-section-right">
+          <div class="lina-avatar-large">
+            <div class="lina-avatar-pulse-large"></div>
+            <span class="lina-letter-lg">L</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="process-section">
+    <div class="container">
+      <div class="process-header">
+        <span class="simple-process-badge">Simple Process</span>
+        <h2>Book your dream trip in 3 steps</h2>
+        <p>No endless searching. Lina does all the work.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">STEP 01</div>
+          <div class="step-icon">💬</div>
+          <h3>Tell Lina</h3>
+          <p>Describe your dream trip — destination, budget, travel style, dates. Any language works.</p>
+        </div>
+        <div class="step-connector">
+          <div class="connector-line"></div>
+        </div>
+        <div class="step-card">
+          <div class="step-number">STEP 02</div>
+          <div class="step-icon">✨</div>
+          <h3>Lina Plans</h3>
+          <p>She searches hundreds of options and builds a perfect custom itinerary just for you.</p>
+        </div>
+        <div class="step-connector">
+          <div class="connector-line"></div>
+        </div>
+        <div class="step-card">
+          <div class="step-number">STEP 03</div>
+          <div class="step-icon">✅</div>
+          <h3>You Book</h3>
+          <p>Review your proposal, ask for changes, then confirm with one click. Done.</p>
+        </div>
+      </div>
+      <div class="process-cta">
+        <a href="#" class="btn-primary btn-gradient">Start planning now</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST SECTION -->
+  <section class="trust-section">
+    <div class="container">
+      <div class="trust-grid">
+        <div class="trust-card">
+          <div class="trust-icon">🏛️</div>
+          <div class="trust-badge-label">Verified</div>
+          <h3>Delaware Incorporated</h3>
+          <p>Officially registered US company</p>
+        </div>
+        <div class="trust-card">
+          <div class="trust-icon">🔒</div>
+          <div class="trust-badge-label">Secure</div>
+          <h3>100% Secure</h3>
+          <p>SSL encrypted, PCI compliant</p>
+        </div>
+        <div class="trust-card">
+          <div class="trust-icon">💰</div>
+          <div class="trust-badge-label">Transparent</div>
+          <h3>No Hidden Fees</h3>
+          <p>What Lina quotes is what you pay</p>
+        </div>
+        <div class="trust-card">
+          <div class="trust-icon">⭐</div>
+          <div class="trust-badge-label">Top Rated</div>
+          <h3>4.9/5 Rating</h3>
+          <p>From verified traveler reviews</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta-section">
+    <div class="container">
+      <div class="final-cta-inner">
+        <div class="final-cta-avatar">
+          <div class="lina-avatar-sm">
+            <span class="lina-letter">L</span>
+          </div>
+        </div>
+        <h2>Start planning your trip with AI</h2>
+        <p>Tell Lina where you want to go and she will instantly create your perfect trip.</p>
+        <div class="final-cta-buttons">
+          <a href="#" class="btn-primary btn-white">💬 Start planning my trip</a>
+          <a href="#" class="btn-call-light">📞 Call Lina</a>
+        </div>
+        <span class="cta-disclaimer">Free to start • No credit card required • 15% off your first booking</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="logo">
+            <div class="logo-avatar logo-avatar-sm">
+              <span class="logo-letter">Z</span>
+            </div>
+            <span class="logo-text">Zeniva Travel</span>
+          </div>
+          <p class="footer-tagline">Zeniva Travel — AI Travel Concierge</p>
+        </div>
+        <div class="footer-links">
+          <a href="#">Partner with us</a>
+          <a href="#">Talk to Lina</a>
+        </div>
+        <div class="footer-legal">
+          <span>Legal:</span>
+          <a href="#">Privacy</a>
+          <a href="#">Privacy Agents</a>
+          <a href="#">Privacy Partners</a>
+          <a href="#">Cookies</a>
+          <a href="#">Terms</a>
+          <a href="#">AI Terms</a>
+          <a href="#">Data Requests</a>
+        </div>
+        <p class="footer-note">ZeniStay is a curated collection of vacation rentals and private homes managed by Zeniva Travel.</p>
+        <p class="footer-copy">&copy; 2024 Zeniva Travel. All rights reserved. Delaware, USA.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
